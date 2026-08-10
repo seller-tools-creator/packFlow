@@ -433,10 +433,17 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
                 <option value="1">1 的倍数（精细）</option>
               </select>
             </div>
-            <div class="field"><label>单边上限 <b>cm</b></label><input type="number" id="maxSide" value="120" min="10" step="5"></div>
+            <div class="field"><label>单边下限 <b>cm</b></label><input type="number" id="minSide" value="10" min="1" step="5"></div>
+          </div>
+          <div class="field" style="margin:2px 0 10px">
+            <label>箱尺寸上限（亚马逊外箱）<b> cm</b> &nbsp;<span style="color:var(--faint);font-weight:400">≈ 36 / 25 / 25 in</span></label>
+            <div style="display:flex;gap:12px;align-items:center;margin-top:7px">
+              <input type="number" id="maxLen" value="91.44" min="1" step="0.5" style="width:74px"> <span style="color:var(--muted);font-size:12px">长</span>
+              <input type="number" id="maxWid" value="63.5" min="1" step="0.5" style="width:74px"> <span style="color:var(--muted);font-size:12px">宽</span>
+              <input type="number" id="maxHt" value="63.5" min="1" step="0.5" style="width:74px"> <span style="color:var(--muted);font-size:12px">高</span>
+            </div>
           </div>
           <div class="row c2">
-            <div class="field"><label>单边下限 <b>cm</b></label><input type="number" id="minSide" value="10" min="1" step="5"></div>
             <div class="field"><label>三边之和上限 <b>cm</b></label><input type="number" id="maxSum" value="" min="0" step="10" placeholder="不限"></div>
           </div>
         </div>
@@ -460,7 +467,7 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
           <div class="field"><label>单箱最低计费 <b>kg</b></label><input type="number" id="minBill" value="5" min="0" step="0.5"></div>
         </div>
         <div class="row c2">
-          <div class="field"><label>单箱限重 <b>kg</b></label><input type="number" id="maxWt" value="30" min="1" step="1"></div>
+          <div class="field"><label>单箱限重 <b>kg</b> <span style="color:var(--faint);font-weight:400">≈ 50 lb（亚马逊）</span></label><input type="number" id="maxWt" value="22.68" min="1" step="0.5"></div>
           <div class="field"><label>计费方式</label><input type="text" value="max(体积重,实重)" disabled style="color:var(--muted)"></div>
         </div>
       </div>
@@ -677,19 +684,25 @@ var PackEngine = (function(){
   }
 
   function genBoxes(opt, minEdge, totalNet, chgVol){
-    var step=+opt.step||5, minSide=+opt.minSide||5, maxSide=+opt.maxSide||120, maxSum=+opt.maxSum||0;
+    var step=+opt.step||5, minSide=+opt.minSide||5;
+    // 亚马逊外箱限制：长/宽/高独立上限（非对称）。回退兼容旧 maxSide（最长边）。
+    var maxL=Math.max(0,+opt.maxLen||+opt.maxSide||120);
+    var maxW=Math.max(0,+opt.maxWid||maxL);
+    var maxH=Math.max(0,+opt.maxHt||maxW);
+    var maxSum=+opt.maxSum||0;
+    var upper=Math.max(maxL,maxW,maxH);
     var vals=[];
-    for(var v=Math.max(step, Math.ceil(minSide/step)*step); v<=maxSide+EPS; v+=step) vals.push(r3(v));
+    for(var v=Math.max(step, Math.ceil(minSide/step)*step); v<=upper+EPS; v+=step) vals.push(r3(v));
     var volCap=Math.max(totalNet*3.4, chgVol*1.3, totalNet*1.25);
     var volMin=Math.max(totalNet*0.999, 0);
     var out=[], i,j,k;
     for(i=0;i<vals.length;i++){
-      var L=vals[i]; if(L<minEdge-EPS) continue;
+      var L=vals[i]; if(L<minEdge-EPS || L>maxL+EPS) continue;
       for(j=0;j<=i;j++){
-        var W=vals[j]; if(W<minEdge-EPS) continue;
+        var W=vals[j]; if(W<minEdge-EPS || W>maxW+EPS) continue;
         if(L*W*vals[0]>volCap) break;
         for(k=0;k<=j;k++){
-          var H=vals[k]; if(H<minEdge-EPS) continue;
+          var H=vals[k]; if(H<minEdge-EPS || H>maxH+EPS) continue;
           var vol=L*W*H;
           if(vol<volMin) continue; if(vol>volCap) continue;
           if(maxSum>0 && L+W+H>maxSum+EPS) continue;
@@ -807,6 +820,10 @@ var PackEngine = (function(){
     if(products.length>maxSku) return {feasible:false, err:'同款箱模式每箱最多 '+maxSku+' 个 SKU，当前 '+products.length+' 种，请改用自由多箱或保留 ≤'+maxSku+' 个 SKU'};
     var perBox={}, remTotal=0, i;
     for(i=0;i<products.length;i++){ var per=Math.floor(products[i].qty/N); perBox[i]=per; remTotal+=products[i].qty-per*N; }
+    // 每箱实重校验（亚马逊单箱 < 50lb ≈ 22.68kg）
+    var perBoxRealWt=0;
+    for(i=0;i<products.length;i++){ perBoxRealWt += perBox[i]*(products[i].wt||0); }
+    if(opt.maxWeight>0 && perBoxRealWt > opt.maxWeight+1e-9) return {feasible:false, err:'同款箱每箱实重 '+perBoxRealWt.toFixed(1)+'kg 超过单箱限重 '+opt.maxWeight+'kg（'+Math.round(opt.maxWeight/0.45359237)+'lb），请增加箱数 N'};
     var items=[];
     for(i=0;i<products.length;i++){ if(perBox[i]>0) items.push({l:products[i].l,w:products[i].w,h:products[i].h,wt:products[i].wt,need:perBox[i],prodIndex:i,prodName:products[i].name}); }
     var br=bestBoxFor(items,opt);
@@ -1115,7 +1132,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       divisor:num('divisor',5000), minCharge:num('minChg',12), minBill:num('minBill',5), price:num('price',8),
       overFrom:num('overFrom',30), overTo:num('overTo',45), overRate:num('overRate',1.5),
       longFrom:num('longFrom',120), longTo:num('longTo',200), longRate:num('longRate',1.5),
-      step:num('step',5), minSide:num('minSide',10), maxSide:num('maxSide',120), maxSum:num('maxSum',0),
+      step:num('step',5), minSide:num('minSide',10), maxLen:num('maxLen',91.44), maxWid:num('maxWid',63.5), maxHt:num('maxHt',63.5), maxSum:num('maxSum',0),
       depth:num('depth',2), scanMaxBoxes:num('scanMaxBoxes',10),
       customBoxes:custom,
       amzRate:num('amzRate',7.2), amzWest:num('amzWest',8), amzEast:num('amzEast',12),
@@ -1608,7 +1625,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       maxSku: $('maxSku').value,
       useCustom: $('useCustom').checked,
       customList: $('customList').value,
-      step: $('step').value, maxSide: $('maxSide').value, minSide: $('minSide').value, maxSum: $('maxSum').value,
+      step: $('step').value, maxLen: $('maxLen').value, maxWid: $('maxWid').value, maxHt: $('maxHt').value, minSide: $('minSide').value, maxSum: $('maxSum').value,
       divisor: $('divisor').value, price: $('price').value, minChg: $('minChg').value, minBill: $('minBill').value,
       maxWt: $('maxWt').value,
       overFrom: $('overFrom').value, overTo: $('overTo').value, overRate: $('overRate').value,
@@ -1631,7 +1648,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     $('useCustom').checked = !!cfg.useCustom;
     $('useCustom').dispatchEvent(new Event('change'));
     $('customList').value = cfg.customList||'';
-    $('step').value = cfg.step||5; $('maxSide').value = cfg.maxSide||120; $('minSide').value = cfg.minSide||10; $('maxSum').value = cfg.maxSum||'';
+    $('step').value = cfg.step||5; $('maxLen').value = cfg.maxLen||91.44; $('maxWid').value = cfg.maxWid||63.5; $('maxHt').value = cfg.maxHt||63.5; $('minSide').value = cfg.minSide||10; $('maxSum').value = cfg.maxSum||'';
     $('divisor').value = cfg.divisor||5000; $('price').value = cfg.price||8; $('minChg').value = cfg.minChg||12; $('minBill').value = cfg.minBill||5; $('maxWt').value = cfg.maxWt||30;
     $('overFrom').value = cfg.overFrom||30; $('overTo').value = cfg.overTo||45; $('overRate').value = cfg.overRate||1.5;
     $('longFrom').value = cfg.longFrom||120; $('longTo').value = cfg.longTo||200; $('longRate').value = cfg.longRate||1.5;
