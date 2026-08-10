@@ -1,0 +1,14 @@
+# 运行时数据（用户账户、方案存储，含敏感信息）
+data/
+
+# 日志
+*.log
+
+# 发布副本（可由 index.html 生成，避免与源码重复）
+dist/
+
+# macOS
+.DS_Store
+
+# 临时校验脚本产物
+node_modules/
