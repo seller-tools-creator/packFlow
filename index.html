@@ -116,6 +116,10 @@ details[open] summary::before{transform:rotate(45deg)}
 .btn-add:hover{border-color:var(--ink-2);color:var(--ink-2)}
 .btn-primary{width:100%;border:none;background:var(--ink);color:#fff;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;box-shadow:var(--shadow-s)}
 .btn-primary:hover{opacity:.9}
+.sb-actions{display:flex;gap:8px;margin-top:6px}
+.sb-actions .btn-primary{flex:1}
+.ghost-btn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
+.ghost-btn:hover{background:#f4f4f5;color:var(--ink)}
 
 /* 单箱装载 3D 视图 */
 .viz3d{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-top:4px}
@@ -545,7 +549,10 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
             <select id="sbDepth"><option value="2" selected>标准（混合摆放）</option><option value="1">快速</option><option value="0">仅单一朝向</option></select>
           </div>
         </div>
-        <button class="btn-primary" id="btnSingle" style="margin-top:6px">⚙ 装载分析</button>
+        <div class="sb-actions">
+          <button class="btn-primary" id="btnSingle">⚙ 装载分析</button>
+          <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果">清空</button>
+        </div>
       </div>
 
     </div>
@@ -1507,6 +1514,15 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     canvas.addEventListener('wheel',function(e){ e.preventDefault();
       sbRot.zoom*=(e.deltaY<0?1.1:0.9); sbRot.zoom=Math.max(0.4,Math.min(3,sbRot.zoom)); draw3d(canvas,sbBox,sbBlocks); },{passive:false});
   }
+  function clearSingle(){
+    if(tab()!=='single') return;
+    $('sbL').value=60; $('sbW').value=40; $('sbH').value=40;
+    $('sbMaxWt').value=''; $('sbDepth').value='2';
+    out.innerHTML='<div class="sec fade"><div class="empty">输入箱子尺寸后点击「装载分析」，即可查看单箱能装多少、剩余需几个外箱，以及多种摆放方案。</div></div>';
+    sbPlans=[]; sbSel=0; sbBox=null; sbBlocks=null; sbCanvas=null;
+    toast('已清空单箱装载输入与结果');
+  }
+
   function computeSingle(){
     if(tab()!=='single') return;
     var L=parseFloat($('sbL').value)||0, W=parseFloat($('sbW').value)||0, H=parseFloat($('sbH').value)||0;
@@ -1970,6 +1986,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(tab()==='single'&&$('stage3d')) draw3d($('stage3d'),sbBox,sbBlocks);
   });
   $('btnSingle').addEventListener('click', computeSingle);
+  $('btnClearSingle').addEventListener('click', clearSingle);
   $('sbL').addEventListener('change',computeSingle); $('sbW').addEventListener('change',computeSingle);
   $('sbH').addEventListener('change',computeSingle); $('sbMaxWt').addEventListener('change',computeSingle);
   $('sbDepth').addEventListener('change',computeSingle);
