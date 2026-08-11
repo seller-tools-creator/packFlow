@@ -574,6 +574,16 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
         <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果" style="margin-top:8px;width:100%">清空</button>
         <div id="sbPlanHead" style="display:none"></div>
         <div id="sbMsg" style="display:none"></div>
+        <div id="sbMetrics" style="display:none" class="sb-metrics">
+          <div class="sb-m-row"><div class="sb-m-label">体积利用率 <span class="qtip" title="装入物品总体积 / 箱子体积">?</span></div><div class="sb-m-val" id="sbUtil">--</div></div>
+          <div class="sb-m-grid">
+            <div><span class="sb-m-sublabel">装载数量</span><b id="sbQty">--</b></div>
+            <div><span class="sb-m-sublabel">装载重量</span><b id="sbWt">--</b></div>
+            <div><span class="sb-m-sublabel">体积</span><b id="sbVol">--</b></div>
+          </div>
+        </div>
+        <div id="sbPlanLabel" style="display:none"></div>
+        <div id="sbPer" style="display:none"></div>
       </div>
 
     </div>
@@ -1494,17 +1504,17 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,cw,chh);
     var L=box[0],W=box[1],H=box[2];
     var maxDim=Math.max(L,W,H,1);
-    var scale=(Math.min(cw,chh)*0.6/Math.max(maxDim,1))*sbRot.zoom;
+    var scale=(Math.min(cw,chh)*0.6/Math.max(maxDim,1))*rot.zoom;
     var ox=cw/2, oy=chh/2;
     var cx=L/2, cy=H/2, cz=W/2;
-    function rot(p){ var x=p[0]-cx, y=p[1]-cy, z=p[2]-cz;
-      var cY=Math.cos(sbRot.yaw), sY=Math.sin(sbRot.yaw);
+    function rotatePt(p){ var x=p[0]-cx, y=p[1]-cy, z=p[2]-cz;
+      var cY=Math.cos(rot.yaw), sY=Math.sin(rot.yaw);
       var x1=x*cY - z*sY, z1=x*sY + z*cY;
-      var cX=Math.cos(sbRot.pitch), sX=Math.sin(sbRot.pitch);
+      var cX=Math.cos(rot.pitch), sX=Math.sin(rot.pitch);
       var y2=y*cX - z1*sX, z2=y*sX + z1*cX;
       return [x1,y2,z2];
     }
-    function proj(p){ var r=rot(p); return [ox + r[0]*scale, oy - r[1]*scale, r[2]]; }
+    function proj(p){ var r=rotatePt(p); return [ox + r[0]*scale, oy - r[1]*scale, r[2]]; }
     var faces=[];
     function pushBox(x,y,z,a,b,c,cols,alpha){
       var c000=[x,y,z],c100=[x+a,y,z],c010=[x,y+b,z],c110=[x+a,y+b,z],
@@ -1592,6 +1602,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     $('sbMaxWt').value=''; $('sbDepth').value='2';
     var head=$('sbPlanHead'); if(head){ head.style.display='none'; head.innerHTML=''; }
     var msg=$('sbMsg'); if(msg){ msg.style.display='none'; msg.innerHTML=''; }
+    var metrics=$('sbMetrics'); if(metrics){ metrics.style.display='none'; }
+    var label=$('sbPlanLabel'); if(label){ label.style.display='none'; }
+    var per=$('sbPer'); if(per){ per.style.display='none'; }
     out.innerHTML='<div class="sec fade"><div class="empty">输入箱子尺寸后点击「装载分析」，即可查看单箱能装多少、剩余需几个外箱，以及多种摆放方案。</div></div>';
     sbPlans=[]; sbSel=0; sbBox=null; sbBlocks=null; sbCanvas=null;
     toast('已清空单箱装载输入与结果');
@@ -1607,6 +1620,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(r.error){
       $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       var msg0=$('sbMsg'); if(msg0){ msg0.style.display='none'; msg0.innerHTML=''; }
+      var metrics0=$('sbMetrics'); if(metrics0){ metrics0.style.display='none'; }
+      var label0=$('sbPlanLabel'); if(label0){ label0.style.display='none'; }
+      var per0=$('sbPer'); if(per0){ per0.style.display='none'; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
       sbBox=null; sbBlocks=null; sbPlans=[]; return;
     }
@@ -1614,6 +1630,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(!sbPlans.length){
       $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       var msg1=$('sbMsg'); if(msg1){ msg1.style.display='none'; msg1.innerHTML=''; }
+      var metrics1=$('sbMetrics'); if(metrics1){ metrics1.style.display='none'; }
+      var label1=$('sbPlanLabel'); if(label1){ label1.style.display='none'; }
+      var per1=$('sbPer'); if(per1){ per1.style.display='none'; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>没有可行方案</b><br>请调整箱子尺寸或单箱限重。</div></div>';
       sbBox=null; sbBlocks=null; return;
     }
@@ -1622,18 +1641,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     $('sbPlanHead').innerHTML=buildPlanHead();
     $('sbPrev').addEventListener('click',function(){ if(sbSel>0){ sbSel--; showPlan(); } });
     $('sbNext').addEventListener('click',function(){ if(sbSel<sbPlans.length-1){ sbSel++; showPlan(); } });
-    // 右侧：指标卡 + 消息 + 明细 + 3D
+    // 右侧：仅保留 3D 视图（指标/明细已移至左侧方案下）
     out.innerHTML='<div class="sec fade">'+
-      '<div class="sb-metrics">'+
-        '<div class="sb-m-row"><div class="sb-m-label">体积利用率 <span class="qtip" title="装入物品总体积 / 箱子体积">?</span></div><div class="sb-m-val" id="sbUtil">--</div></div>'+
-        '<div class="sb-m-grid">'+
-          '<div><span class="sb-m-sublabel">装载数量</span><b id="sbQty">--</b></div>'+
-          '<div><span class="sb-m-sublabel">装载重量</span><b id="sbWt">--</b></div>'+
-          '<div><span class="sb-m-sublabel">体积</span><b id="sbVol">--</b></div>'+
-        '</div>'+
-      '</div>'+
-      '<div class="sb-plan-label" id="sbPlanLabel"></div>'+
-      '<div id="sbPer"></div>'+
       '<div class="viz3d"><canvas id="stage3d"></canvas>'+
         '<div class="viz3d-tools"><button id="sbReset">重置视角</button></div>'+
         '<div class="viz3d-cap">🖱 拖动旋转 · 滚轮缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
@@ -1664,12 +1673,14 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(prev) prev.disabled=sbSel<=0;
     if(next) next.disabled=sbSel>=sbPlans.length-1;
     if(labelEl) labelEl.innerHTML='<span class="chip on">'+esc(p.label)+'</span> · 装入 '+p.itemsInBox+' 个物品';
-    // 指标卡
+    if(labelEl) labelEl.style.display='block';
+    // 指标卡（已移至左侧方案下）
     var utilEl=$('sbUtil'), qtyEl=$('sbQty'), wtEl=$('sbWt'), volEl=$('sbVol');
     if(utilEl) utilEl.textContent=f((p.util||0)*100,1)+'%';
     if(qtyEl) qtyEl.textContent=p.itemsInBox+'';
     if(wtEl) wtEl.textContent=f(p.weight||0,2)+' kg';
     if(volEl) volEl.textContent=((p.itemVol||0)/1e6).toFixed(4)+' m³';
+    var mEl=$('sbMetrics'); if(mEl) mEl.style.display='block';
     // 消息
     var msgClass=p.allFit?'ok':'bad';
     var msgHtml = p.allFit
@@ -1682,7 +1693,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var txt = pr.left>0 ? (pr.inBox+' 装入 / '+pr.left+' 未装入') : ('全部 '+pr.qty+' 装入');
       pp+='<div class="pp"><b>'+esc(pr.name)+'</b> · '+txt+'</div>';
     }
-    var perEl=$('sbPer'); if(perEl) perEl.innerHTML=pp;
+    var perEl=$('sbPer'); if(perEl){ perEl.innerHTML=pp; perEl.style.display='block'; }
     // 3D
     sbBox=p.box; sbBlocks=p.blocks;
     if(sbCanvas) draw3d(sbCanvas, sbBox, sbBlocks);
