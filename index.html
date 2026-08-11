@@ -1766,11 +1766,11 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var tf=p.totalFreight, chg=p.fr.chargeable*p.boxesNeeded, vw=p.fr.volW*p.boxesNeeded, rw=p.fr.realWt*p.boxesNeeded, sur=p.fr.surcharge*p.boxesNeeded;
       var costTxt = price>0 ? '¥'+f(tf,2) : f(chg,1)+' kg';
       var perTxt = price>0 ? '¥'+f(tf/p.total,2) : f(chg/p.total,3)+' kg';
-      // 节省：按省 20% 空间对应的运费估算（= 总运费 × 20%）
-      var saveTxt = price>0 ? '¥'+f(tf*0.2,2) : f(chg*0.2,1)+' kg';
+      // 节省：按省 20% 空间对应的运费估算（= 总运费 × 20%）；无单价按重量计费时无运费可省，隐藏徽标
+      var saveHtml = price>0 ? '<span class="save-badge" title="按节省 20% 空间估算的运费收益">节省 ¥'+f(tf*0.2,2)+' · 省20%空间</span>' : '';
       costEl.innerHTML='<div class="tagline"><span class="badge">单箱装载</span><em>'+p.total+' 件 · 需 '+p.boxesNeeded+' 个外箱</em></div>'+
         '<div class="dims num"><span class="big">'+costTxt+'</span>'+
-          '<span class="save-badge" title="按节省 20% 空间估算的运费收益">节省 '+saveTxt+' · 省20%空间</span></div>'+
+          saveHtml+'</div>'+
         '<div class="subline">总运费（'+p.boxesNeeded+' 箱合计）· 单件均运费 <b>'+perTxt+'</b>'+(sur>0.005?' · 含附加费 <b>¥'+f(sur,2)+'</b>':'')+'</div>'+
         '<div class="kpis">'+
           '<div class="kpi"><div class="k">总计费重量</div><div class="v num">'+f(chg,1)+'<small>kg</small></div></div>'+
