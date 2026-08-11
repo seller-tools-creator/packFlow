@@ -1268,6 +1268,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   var out=$('out'), toastEl=$('toast'), timer=null, lastResult=null;
   var CATALOG_KEY='packflow_catalog_v1';
   var sbRot={yaw:0.62,pitch:0.5,zoom:1}, sbBox=null, sbBlocks=null, sb3dInited=false;
+  var pkRot={yaw:0.62,pitch:0.5,zoom:1}, pkBox=null, pkBlocks=null;
   var sbPlans=[], sbSel=0, sbCanvas=null;
 
   var PALETTE=[
@@ -1475,8 +1476,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     r=Math.min(255,Math.round(r*factor)); g=Math.min(255,Math.round(g*factor)); b=Math.min(255,Math.round(b*factor));
     return 'rgba('+r+','+g+','+b+','+alpha+')';
   }
-  function draw3d(canvas, box, blocks){
+  function draw3d(canvas, box, blocks, rot){
     if(!canvas) return;
+    rot = rot || sbRot;
     var dpr=window.devicePixelRatio||1;
     var cw=canvas.clientWidth||480, chh=canvas.clientHeight||340;
     canvas.width=cw*dpr; canvas.height=chh*dpr;
@@ -1550,18 +1552,21 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     g.strokeStyle='#6B7280'; g.lineWidth=1.2;
     for(var ei=0;ei<ed.length;ei++){ var a=proj(cs[ed[ei][0]]), b=proj(cs[ed[ei][1]]); g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke(); }
   }
-  function init3d(canvas){
+  function init3d(canvas, getState){
     if(!canvas) return;
+    getState = getState || function(){ return {box:sbBox, blocks:sbBlocks, rot:sbRot}; };
     var dragging=false, lx=0, ly=0;
     canvas.addEventListener('pointerdown',function(e){ canvas.setPointerCapture(e.pointerId); dragging=true; lx=e.clientX; ly=e.clientY; });
     canvas.addEventListener('pointermove',function(e){ if(!dragging) return;
-      sbRot.yaw -= (e.clientX-lx)*0.01; sbRot.pitch += (e.clientY-ly)*0.01;
-      sbRot.pitch=Math.max(-1.45,Math.min(1.45,sbRot.pitch)); lx=e.clientX; ly=e.clientY;
-      draw3d(canvas,sbBox,sbBlocks); });
+      var s=getState();
+      s.rot.yaw -= (e.clientX-lx)*0.01; s.rot.pitch += (e.clientY-ly)*0.01;
+      s.rot.pitch=Math.max(-1.45,Math.min(1.45,s.rot.pitch)); lx=e.clientX; ly=e.clientY;
+      draw3d(canvas,s.box,s.blocks,s.rot); });
     canvas.addEventListener('pointerup',function(e){ dragging=false; });
     canvas.addEventListener('pointercancel',function(e){ dragging=false; });
     canvas.addEventListener('wheel',function(e){ e.preventDefault();
-      sbRot.zoom*=(e.deltaY<0?1.1:0.9); sbRot.zoom=Math.max(0.4,Math.min(3,sbRot.zoom)); draw3d(canvas,sbBox,sbBlocks); },{passive:false});
+      var s=getState();
+      s.rot.zoom*=(e.deltaY<0?1.1:0.9); s.rot.zoom=Math.max(0.4,Math.min(3,s.rot.zoom)); draw3d(canvas,s.box,s.blocks,s.rot); },{passive:false});
   }
   function clearSingle(){
     if(tab()!=='single') return;
@@ -1717,7 +1722,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var perTxt = price>0 ? '¥'+f(t.freight/r.totalUnits,2) : f(t.chargeable/r.totalUnits,3)+' kg';
 
     // Hero
-    html+='<div class="hero fade"><div class="hero-top"><div class="hero-main">'+
+    html+='<div class="hero fade"><div class="hero-top" style="grid-template-columns:1fr"><div class="hero-main">'+
       '<div class="tagline">'+
       (r.mode==='identical'?'<span class="badge b">省入仓费·同款箱</span>':'<span class="badge">多箱规划</span>')+
       (r.identical?'<span class="badge g">'+r.N+' 箱完全相同</span>':'<span class="badge o">共 '+r.N+' 箱</span>')+
@@ -1731,8 +1736,10 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '<div class="kpi"><div class="k">总实重</div><div class="v num">'+f(t.realWt,1)+'<small>kg</small></div></div>'+
         '<div class="kpi hl"><div class="k">单箱最低计费</div><div class="v num">'+f(r.minBill,0)+'<small>kg</small></div></div>'+
       '</div></div>'+
-      '<div class="viz"><canvas id="stage"></canvas>'+
-      '<div class="viz-cap">代表箱装载示意 · '+dim(r.rep.box)+' cm · 利用率 '+f(r.rep.blocks&&r.boxes[0].fill?r.boxes[0].fill*100:0,1)+'%</div></div>'+
+      '</div></div>'+
+      '<div class="viz3d fade" style="margin-top:14px"><canvas id="stage3d"></canvas>'+
+        '<div class="viz3d-tools"><button id="pkReset">重置视角</button></div>'+
+        '<div class="viz3d-cap">🖱 拖动旋转 · 滚轮缩放 · 代表箱 '+dim(r.rep.box)+' cm</div>'+
       '</div>';
 
     // 装箱明细
@@ -1808,7 +1815,10 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       layerText(r.rep.blocks, r.rep.vol)+'</div>';
 
     out.innerHTML=html;
-    var stage=$('stage'); if(stage) draw(stage, r.rep.box, r.rep.blocks);
+    pkBox=r.rep.box; pkBlocks=r.rep.blocks;
+    var stage3d=$('stage3d');
+    if(stage3d){ draw3d(stage3d, pkBox, pkBlocks, pkRot); init3d(stage3d, function(){ return {box:pkBox, blocks:pkBlocks, rot:pkRot}; }); }
+    var pkReset=$('pkReset'); if(pkReset) pkReset.addEventListener('click',function(){ pkRot={yaw:0.62,pitch:0.5,zoom:1}; draw3d(stage3d,pkBox,pkBlocks,pkRot); });
 
     var rows=out.querySelectorAll('tbody tr');
     for(var n2=0;n2<rows.length;n2++){
@@ -2057,6 +2067,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   window.addEventListener('resize',function(){
     if(lastResult&&$('stage')) draw($('stage'),lastResult.rep.box,lastResult.rep.blocks);
     if(tab()==='single'&&$('stage3d')) draw3d($('stage3d'),sbBox,sbBlocks);
+    if(tab()==='pack'&&$('stage3d')) draw3d($('stage3d'),pkBox,pkBlocks,pkRot);
   });
   $('btnSingle').addEventListener('click', computeSingle);
   $('btnClearSingle').addEventListener('click', clearSingle);
