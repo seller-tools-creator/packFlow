@@ -130,8 +130,12 @@ details[open] summary::before{transform:rotate(45deg)}
 .viz3d-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px}
 .viz3d-tools button{border:1px solid var(--line-2);background:rgba(255,255,255,.9);color:var(--ink-2);border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
 .viz3d-tools button:hover{border-color:var(--ink-2)}
-.sb-viz{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 90% at 50% 15%,#FCFCFD 0%,#F2F3F6 100%);display:flex;flex-direction:column;margin-top:4px;margin-bottom:16px}
-.sb-viz canvas{display:block;width:100%;height:236px}
+.sb-result-top{display:grid;grid-template-columns:minmax(0,1fr) 260px;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow-s);margin-bottom:16px;background:#fff}
+@media(max-width:860px){.sb-result-top{grid-template-columns:1fr}}
+.sb-main-card{padding:22px 24px 20px}
+.sb-viz{border-left:1px solid var(--line);background:radial-gradient(120% 90% at 50% 15%,#FCFCFD 0%,#F2F3F6 100%);display:flex;flex-direction:column;position:relative;border-radius:0;overflow:hidden;margin:0}
+@media(max-width:860px){.sb-viz{border-left:none;border-top:1px solid var(--line)}}
+.sb-viz canvas{display:block;width:100%;height:180px}
 .zoom-row{display:flex;align-items:center;gap:10px;padding:9px 14px 12px;background:rgba(255,255,255,.5);border-top:1px solid var(--line)}
 .zoom-row span{font-size:11px;color:var(--muted);flex:none;user-select:none}
 .zoom-row span:first-child{margin-right:2px}
@@ -1622,9 +1626,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     $('sbMaxWt').value=''; $('sbDepth').value='2';
     var head=$('sbPlanHead'); if(head){ head.style.display='none'; head.innerHTML=''; }
     var msg=$('sbMsg'); if(msg){ msg.style.display='none'; msg.innerHTML=''; }
-    var metrics=$('sbMetrics'); if(metrics){ metrics.style.display='none'; }
-    var label=$('sbPlanLabel'); if(label){ label.style.display='none'; }
-    var per=$('sbPer'); if(per){ per.style.display='none'; }
+    var per=$('sbPer'); if(per){ per.style.display='none'; per.innerHTML=''; }
     out.innerHTML='<div class="sec fade"><div class="empty">输入箱子尺寸后点击「装载分析」，即可查看单箱能装多少、剩余需几个外箱，以及多种摆放方案。</div></div>';
     sbPlans=[]; sbSel=0; sbBox=null; sbBlocks=null; sbCanvas=null;
     toast('已清空单箱装载输入与结果');
@@ -1640,9 +1642,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(r.error){
       $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       var msg0=$('sbMsg'); if(msg0){ msg0.style.display='none'; msg0.innerHTML=''; }
-      var metrics0=$('sbMetrics'); if(metrics0){ metrics0.style.display='none'; }
-      var label0=$('sbPlanLabel'); if(label0){ label0.style.display='none'; }
-      var per0=$('sbPer'); if(per0){ per0.style.display='none'; }
+      var per0=$('sbPer'); if(per0){ per0.style.display='none'; per0.innerHTML=''; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
       sbBox=null; sbBlocks=null; sbPlans=[]; return;
     }
@@ -1650,9 +1650,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(!sbPlans.length){
       $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       var msg1=$('sbMsg'); if(msg1){ msg1.style.display='none'; msg1.innerHTML=''; }
-      var metrics1=$('sbMetrics'); if(metrics1){ metrics1.style.display='none'; }
-      var label1=$('sbPlanLabel'); if(label1){ label1.style.display='none'; }
-      var per1=$('sbPer'); if(per1){ per1.style.display='none'; }
+      var per1=$('sbPer'); if(per1){ per1.style.display='none'; per1.innerHTML=''; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>没有可行方案</b><br>请调整箱子尺寸或单箱限重。</div></div>';
       sbBox=null; sbBlocks=null; return;
     }
@@ -1671,22 +1669,15 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var fr=PackEngine.computeFreight(volW, pp.weight, longest, sbBill);
       pp.fr=fr; pp.totalFreight=fr.freight*pp.boxesNeeded;
     }
-    // 右侧：默认方式B 静态小图 + 点击放大进入方式A 可拖拽3D
+    // 右侧：默认方式B 静态小图 + 点击放大进入方式A 可拖拽3D（左右布局，同多箱规划）
     out.innerHTML='<div class="sec fade">'+
-      '<div class="sb-viz"><canvas id="sbStaticCanvas"></canvas>'+
-        '<div class="viz3d-tools"><button id="sbMax" title="放大查看">⤢ 放大</button></div>'+
-        '<div class="viz-cap">代表箱装载示意 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm · 点击放大可拖拽旋转</div>'+
-      '</div>'+
-      '<div class="sb-cost" id="sbCost"></div>'+
-      '<div class="sb-metrics" id="sbMetrics">'+
-        '<div class="sb-m-row"><div class="sb-m-label">体积利用率 <span class="qtip" title="装入物品总体积 / 箱子体积">?</span></div><div class="sb-m-val" id="sbUtil">--</div></div>'+
-        '<div class="sb-m-grid">'+
-          '<div><span class="sb-m-sublabel">装载数量</span><b id="sbQty">--</b></div>'+
-          '<div><span class="sb-m-sublabel">装载重量</span><b id="sbWt">--</b></div>'+
-          '<div><span class="sb-m-sublabel">体积</span><b id="sbVol">--</b></div>'+
+      '<div class="sb-result-top">'+
+        '<div class="sb-main-card" id="sbMainCard"></div>'+
+        '<div class="sb-viz"><canvas id="sbStaticCanvas"></canvas>'+
+          '<div class="viz3d-tools"><button id="sbMax" title="放大查看">⤢ 放大</button></div>'+
+          '<div class="viz-cap" id="sbVizCap">代表箱装载示意 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm · 利用率 --</div>'+
         '</div>'+
       '</div>'+
-      '<div class="sb-plan-label" id="sbPlanLabel"></div>'+
       '<div id="sbMsg"></div>'+
       '<div id="sbPer"></div>'+
     '</div>';
@@ -1731,15 +1722,13 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   function showPlan(){
     var p=sbPlans[sbSel]; if(!p) return;
     // 方案切换器
-    var idxEl=$('sbPlanIdx'), totEl=$('sbPlanTotal'), prev=$('sbPrev'), next=$('sbNext'), labelEl=$('sbPlanLabel');
+    var idxEl=$('sbPlanIdx'), totEl=$('sbPlanTotal'), prev=$('sbPrev'), next=$('sbNext');
     if(idxEl) idxEl.textContent=(sbSel+1)+'';
     if(totEl) totEl.textContent=sbPlans.length+'';
     if(prev) prev.disabled=sbSel<=0;
     if(next) next.disabled=sbSel>=sbPlans.length-1;
-    if(labelEl) labelEl.innerHTML='<span class="chip on">'+esc(p.label)+'</span> · 装入 '+p.itemsInBox+' 个物品';
-    if(labelEl) labelEl.style.display='block';
-    // 运费卡片
-    var costEl=$('sbCost');
+    // 左侧大信息卡片（运费 + KPI）
+    var costEl=$('sbMainCard');
     if(costEl && p.fr){
       var price=sbBill.price;
       var tf=p.totalFreight, chg=p.fr.chargeable*p.boxesNeeded, vw=p.fr.volW*p.boxesNeeded, rw=p.fr.realWt*p.boxesNeeded, sur=p.fr.surcharge*p.boxesNeeded;
@@ -1755,13 +1744,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
           '<div class="kpi hl"><div class="k">单箱最低计费</div><div class="v num">'+f(sbBill.minBill,0)+'<small>kg</small></div></div>'+
         '</div>';
     }
-    // 指标卡
-    var utilEl=$('sbUtil'), qtyEl=$('sbQty'), wtEl=$('sbWt'), volEl=$('sbVol');
-    if(utilEl) utilEl.textContent=f((p.util||0)*100,1)+'%';
-    if(qtyEl) qtyEl.textContent=p.itemsInBox+'';
-    if(wtEl) wtEl.textContent=f(p.weight||0,2)+' kg';
-    if(volEl) volEl.textContent=((p.itemVol||0)/1e6).toFixed(4)+' m³';
-    var mEl=$('sbMetrics'); if(mEl) mEl.style.display='block';
     // 消息
     var msgClass=p.allFit?'ok':'bad';
     var msgHtml = p.allFit
@@ -1778,6 +1760,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     // 默认态：方式B 静态小图；点击放大进入方式A 可拖拽3D
     sbBox=p.box; sbBlocks=p.blocks;
     if(sbCanvas) draw(sbCanvas, sbBox, sbBlocks);
+    // 更新右侧小图说明（利用率）
+    var cap=$('sbVizCap');
+    if(cap) cap.textContent='代表箱装载示意 · 箱子 '+f(p.box[0],0)+'×'+f(p.box[1],0)+'×'+f(p.box[2],0)+' cm · 利用率 '+f((p.util||0)*100,1)+'%';
   }
 
   function layerText(blocks, boxVol){

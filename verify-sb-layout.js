@@ -1,4 +1,4 @@
-// 验证单箱装载默认态改为方式B静态小图，点击放大进入方式A可拖拽3D
+// 验证单箱装载默认态为方式B静态小图+左侧大信息卡片（同多箱规划布局），点击放大进入方式A可拖拽3D
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('/Users/shitongsong/.workbuddy/binaries/node/workspace/node_modules/jsdom');
@@ -40,7 +40,12 @@ setTimeout(() => {
     assert('默认态不存在旧 stage3d', !$('stage3d'));
     assert('默认态不存在缩放滑块 sbZoom', !$('sbZoom'));
     assert('存在放大按钮 sbMax', !!$('sbMax'));
-    assert('存在运费卡片 sbCost', !!$('sbCost') && $('sbCost').innerHTML.length>50);
+    assert('存在左侧大信息卡片 sbMainCard', !!$('sbMainCard') && $('sbMainCard').innerHTML.length>50);
+    assert('不存在旧的 sbCost', !$('sbCost'));
+    assert('不存在旧的 sbMetrics', !$('sbMetrics'));
+    assert('采用左右布局 sb-result-top', !!doc.querySelector('.sb-result-top'));
+    var vizCap=$('sbVizCap');
+    assert('右侧小图说明含利用率', !!vizCap && /利用率/.test(vizCap.textContent));
     fire($('sbMax'), 'click');
     assert('点击放大后遮罩打开', $('sbMaxOverlay').classList.contains('on'));
     assert('放大态存在 stage3dMax', !!$('stage3dMax'));
