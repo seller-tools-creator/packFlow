@@ -1276,7 +1276,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   var out=$('out'), toastEl=$('toast'), timer=null, lastResult=null;
   var CATALOG_KEY='packflow_catalog_v1';
   var sbRot={yaw:0.62,pitch:0.5,zoom:1}, sbBox=null, sbBlocks=null, sb3dInited=false;
-  var pkRot={yaw:0.62,pitch:0.5,zoom:1}, pkBox=null, pkBlocks=null;
   var sbPlans=[], sbSel=0, sbCanvas=null;
 
   var PALETTE=[
@@ -1742,7 +1741,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var perTxt = price>0 ? '¥'+f(t.freight/r.totalUnits,2) : f(t.chargeable/r.totalUnits,3)+' kg';
 
     // Hero
-    html+='<div class="hero fade"><div class="hero-top" style="grid-template-columns:1fr"><div class="hero-main">'+
+    html+='<div class="hero fade"><div class="hero-top"><div class="hero-main">'+
       '<div class="tagline">'+
       (r.mode==='identical'?'<span class="badge b">省入仓费·同款箱</span>':'<span class="badge">多箱规划</span>')+
       (r.identical?'<span class="badge g">'+r.N+' 箱完全相同</span>':'<span class="badge o">共 '+r.N+' 箱</span>')+
@@ -1756,11 +1755,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '<div class="kpi"><div class="k">总实重</div><div class="v num">'+f(t.realWt,1)+'<small>kg</small></div></div>'+
         '<div class="kpi hl"><div class="k">单箱最低计费</div><div class="v num">'+f(r.minBill,0)+'<small>kg</small></div></div>'+
       '</div></div>'+
-      '</div></div>'+
-      '<div class="viz3d fade" style="margin-top:14px"><canvas id="stage3d"></canvas>'+
-        '<div class="viz3d-tools"><button id="pkReset">重置视角</button></div>'+
-        '<div class="viz3d-cap">🖱 拖动旋转 · 滚轮缩放 · 代表箱 '+dim(r.rep.box)+' cm</div>'+
-        '<div class="zoom-row"><span>小</span><input type="range" id="pkZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
+      '</div>'+
+      '<div class="viz"><canvas id="stage"></canvas>'+
+        '<div class="viz-cap">代表箱装载示意 · '+dim(r.rep.box)+' cm · 利用率 '+f(r.rep.blocks&&r.boxes[0].fill?r.boxes[0].fill*100:0,1)+'%</div></div>'+
       '</div>';
 
     // 装箱明细
@@ -1836,11 +1833,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       layerText(r.rep.blocks, r.rep.vol)+'</div>';
 
     out.innerHTML=html;
-    pkBox=r.rep.box; pkBlocks=r.rep.blocks;
-    var stage3d=$('stage3d');
-    if(stage3d){ draw3d(stage3d, pkBox, pkBlocks, pkRot); init3d(stage3d, function(){ return {box:pkBox, blocks:pkBlocks, rot:pkRot}; }); }
-    var pkZoom=$('pkZoom'); if(pkZoom) bindZoomSlider(pkZoom, stage3d, pkRot, function(){ return {box:pkBox, blocks:pkBlocks}; });
-    var pkReset=$('pkReset'); if(pkReset) pkReset.addEventListener('click',function(){ pkRot.yaw=0.62; pkRot.pitch=0.5; pkRot.zoom=1; if(pkRot._zoomEl) pkRot._zoomEl.value=1; draw3d(stage3d,pkBox,pkBlocks,pkRot); });
+    var stage=$('stage'); if(stage) draw(stage, r.rep.box, r.rep.blocks);
 
     var rows=out.querySelectorAll('tbody tr');
     for(var n2=0;n2<rows.length;n2++){
@@ -2089,7 +2082,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   window.addEventListener('resize',function(){
     if(lastResult&&$('stage')) draw($('stage'),lastResult.rep.box,lastResult.rep.blocks);
     if(tab()==='single'&&$('stage3d')) draw3d($('stage3d'),sbBox,sbBlocks);
-    if(tab()==='pack'&&$('stage3d')) draw3d($('stage3d'),pkBox,pkBlocks,pkRot);
   });
   $('btnSingle').addEventListener('click', computeSingle);
   $('btnClearSingle').addEventListener('click', clearSingle);
