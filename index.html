@@ -126,7 +126,7 @@ details[open] summary::before{transform:rotate(45deg)}
 .viz3d{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-top:4px}
 .viz3d canvas{display:block;width:100%;height:460px;cursor:grab;touch-action:none}
 .viz3d canvas:active{cursor:grabbing}
-.viz3d-cap{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;color:var(--faint);pointer-events:none}
+.viz3d-cap{position:absolute;left:8px;top:8px;right:auto;bottom:auto;text-align:left;font-size:11px;color:var(--faint);pointer-events:none}
 .viz3d-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px}
 .viz3d-tools button{border:1px solid var(--line-2);background:rgba(255,255,255,.9);color:var(--ink-2);border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
 .viz3d-tools button:hover{border-color:var(--ink-2)}
@@ -1582,8 +1582,10 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       draw3d(canvas,s.box,s.blocks,s.rot); });
     canvas.addEventListener('pointerup',function(e){ dragging=false; });
     canvas.addEventListener('pointercancel',function(e){ dragging=false; });
-    canvas.addEventListener('wheel',function(e){ e.preventDefault();
+    canvas.addEventListener('wheel',function(e){
       var s=getState();
+      if(!s.rot._sliderEnabled) return; // 滚轮默认禁用：必须先使用下方「大小轴」滑块才能滚轮缩放
+      e.preventDefault();
       s.rot.zoom*=(e.deltaY<0?1.1:0.9); s.rot.zoom=Math.max(0.4,Math.min(3,s.rot.zoom)); if(s.rot._zoomEl) s.rot._zoomEl.value=s.rot.zoom; draw3d(canvas,s.box,s.blocks,s.rot); },{passive:false});
   }
   function bindZoomSlider(slider, canvas, rot, getGeom){
@@ -1591,10 +1593,15 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     getGeom = getGeom || function(){ return {box:sbBox, blocks:sbBlocks}; };
     slider.min=0.4; slider.max=3; slider.step=0.01; slider.value=rot.zoom;
     rot._zoomEl=slider;
+    rot._sliderEnabled=false; // 默认滚轮缩放关闭，需用户先操作滑块
+    function enable(){ rot._sliderEnabled=true; }
+    slider.addEventListener('pointerdown', enable);
     slider.addEventListener('input', function(){
+      enable();
       rot.zoom=parseFloat(slider.value);
       draw3d(canvas, getGeom().box, getGeom().blocks, rot);
     });
+    slider.addEventListener('change', enable);
   }
   function clearSingle(){
     if(tab()!=='single') return;
@@ -1645,7 +1652,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     out.innerHTML='<div class="sec fade">'+
       '<div class="viz3d"><canvas id="stage3d"></canvas>'+
         '<div class="viz3d-tools"><button id="sbReset">重置视角</button></div>'+
-        '<div class="viz3d-cap">🖱 拖动旋转 · 滚轮缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
+        '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
         '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
       '</div>';
     sbCanvas=$('stage3d');
