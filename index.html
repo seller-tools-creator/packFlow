@@ -133,8 +133,19 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-viz{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-bottom:16px;display:flex;flex-direction:column}
 .sb-viz canvas{display:block;width:100%;height:360px;cursor:grab;touch-action:none}
 .sb-viz canvas:active{cursor:grabbing}
-.sb-util-big{display:flex;align-items:baseline;justify-content:center;gap:10px;margin:-6px 0 18px;font-size:16px;font-weight:600;color:var(--ink-2)}
-.sb-util-big span{font-size:42px;font-weight:800;color:#e67e22;letter-spacing:-1px}
+.sb-summary-row{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:16px;margin-bottom:16px;align-items:stretch}
+@media(max-width:720px){.sb-summary-row{grid-template-columns:1fr}}
+.sb-info-card{background:#f8fbff;border:1px solid #d6e8ff;border-radius:14px;padding:16px;display:flex;flex-direction:column}
+.sb-info-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sb-info-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-top:1px solid #dbe8ff;border-bottom:1px solid #dbe8ff;padding:14px 0;margin-bottom:14px;text-align:center}
+.sb-info-metrics>div{display:flex;flex-direction:column;gap:4px}
+.sb-info-metrics .sb-info-label{font-size:11px;color:#7b879b;letter-spacing:.03em}
+.sb-info-metrics b{font-size:18px;font-weight:700;color:#1f2338;white-space:nowrap}
+.sb-save-btn{width:100%;padding:10px 12px;border:1px solid #c9d3e8;background:#fff;border-radius:9px;font-size:13px;font-weight:600;color:#3a4a6d;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:auto}
+.sb-save-btn:hover{background:#f1f6ff;border-color:#9ab5e6}
+.sb-util-col{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #ffe8d6;border-radius:14px;background:#fffbf5}
+.sb-util-label{font-size:16px;font-weight:700;color:#d35400;margin-bottom:2px}
+.sb-util-val{font-size:52px;font-weight:800;color:#e67e22;letter-spacing:-1px;line-height:1}
 .sb-main-card{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow-s)}
 .zoom-row{display:flex;align-items:center;gap:10px;padding:9px 14px 12px;background:rgba(255,255,255,.5);border-top:1px solid var(--line)}
 .zoom-row span{font-size:11px;color:var(--muted);flex:none;user-select:none}
@@ -1624,7 +1635,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(tab()!=='single') return;
     $('sbL').value=60; $('sbW').value=40; $('sbH').value=40;
     $('sbMaxWt').value=''; $('sbDepth').value='2';
-    var head=$('sbPlanHead'); if(head){ head.style.display='none'; head.innerHTML=''; }
     var msg=$('sbMsg'); if(msg){ msg.style.display='none'; msg.innerHTML=''; }
     var per=$('sbPer'); if(per){ per.style.display='none'; per.innerHTML=''; }
     out.innerHTML='<div class="sec fade"><div class="empty">输入箱子尺寸后点击「装载分析」，即可查看单箱能装多少、剩余需几个外箱，以及多种摆放方案。</div></div>';
@@ -1640,7 +1650,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var products=collectProducts();
     var r; try{ r=PackEngine.packSingleBox([L,W,H], products, {maxWeight:maxWt, depth:depth, plans:true}); }catch(e){ r={error:'计算出错：'+e.message}; }
     if(r.error){
-      $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       var msg0=$('sbMsg'); if(msg0){ msg0.style.display='none'; msg0.innerHTML=''; }
       var per0=$('sbPer'); if(per0){ per0.style.display='none'; per0.innerHTML=''; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
@@ -1648,17 +1657,11 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     }
     sbPlans = r.plans||[]; sbSel = r.best||0;
     if(!sbPlans.length){
-      $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       var msg1=$('sbMsg'); if(msg1){ msg1.style.display='none'; msg1.innerHTML=''; }
       var per1=$('sbPer'); if(per1){ per1.style.display='none'; per1.innerHTML=''; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>没有可行方案</b><br>请调整箱子尺寸或单箱限重。</div></div>';
       sbBox=null; sbBlocks=null; return;
     }
-    // 左侧：方案切换器
-    $('sbPlanHead').style.display='block';
-    $('sbPlanHead').innerHTML=buildPlanHead();
-    $('sbPrev').addEventListener('click',function(){ if(sbSel>0){ sbSel--; showPlan(); } });
-    $('sbNext').addEventListener('click',function(){ if(sbSel<sbPlans.length-1){ sbSel++; showPlan(); } });
     // 计费规则 → 估算每箱运费，乘外箱数量
     sbBill = readSingleBill();
     var wall=sbBill.wall, oL=L+2*wall, oW=W+2*wall, oH=H+2*wall;
@@ -1679,7 +1682,27 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
         '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
       '</div>'+
-      '<div class="sb-util-big">空间利用率 <span id="sbUtilBig">--</span></div>'+
+      '<div class="sb-summary-row">'+
+        '<div class="sb-info-card">'+
+          '<div class="sb-info-head">'+
+            '<span class="sb-plan-title">方案 <b id="sbPlanIdx">'+(sbSel+1)+'</b> / <span id="sbPlanTotal">'+sbPlans.length+'</span></span>'+
+            '<div class="sb-plan-nav">'+
+              '<button class="sb-arrow" id="sbPrev" '+(sbSel<=0?'disabled':'')+'>‹</button>'+
+              '<button class="sb-arrow" id="sbNext" '+(sbSel>=sbPlans.length-1?'disabled':'')+'>›</button>'+
+            '</div>'+
+          '</div>'+
+          '<div class="sb-info-metrics">'+
+            '<div><span class="sb-info-label">装载数量</span><b id="sbQty">--</b></div>'+
+            '<div><span class="sb-info-label">装载重量</span><b id="sbWt">--</b></div>'+
+            '<div><span class="sb-info-label">体积</span><b id="sbVol">--</b></div>'+
+          '</div>'+
+          '<button class="sb-save-btn" id="sbSavePlan" title="保存方案">保存方案</button>'+
+        '</div>'+
+        '<div class="sb-util-col">'+
+          '<div class="sb-util-label">体积利用率</div>'+
+          '<div class="sb-util-val" id="sbUtilBig">--</div>'+
+        '</div>'+
+      '</div>'+
       '<div class="sb-main-card" id="sbMainCard"></div>'+
       '<div id="sbMsg"></div>'+
       '<div id="sbPer"></div>'+
@@ -1689,6 +1712,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var sbZoom=$('sbZoom'); if(sbZoom) bindZoomSlider(sbZoom, sbCanvas, sbRot);
     var resetBtn=$('sbReset'); if(resetBtn) resetBtn.addEventListener('click',function(){ sbRot.yaw=0.62; sbRot.pitch=0.5; sbRot.zoom=1; if(sbRot._zoomEl) sbRot._zoomEl.value=1; showPlan(); });
     var maxBtn=$('sbMax'); if(maxBtn) maxBtn.addEventListener('click', openMax3d);
+    var prevBtn=$('sbPrev'), nextBtn=$('sbNext');
+    if(prevBtn) prevBtn.addEventListener('click',function(){ if(sbSel>0){ sbSel--; showPlan(); } });
+    if(nextBtn) nextBtn.addEventListener('click',function(){ if(sbSel<sbPlans.length-1){ sbSel++; showPlan(); } });
     showPlan();
   }
 
@@ -1716,15 +1742,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   }
   function closeMax3d(){ var ov=$('sbMaxOverlay'); if(ov) ov.classList.remove('on'); }
 
-  function buildPlanHead(){
-    return '<div class="sb-plan-head">'+
-      '<span class="sb-plan-title">方案 <b id="sbPlanIdx">'+(sbSel+1)+'</b> / <span id="sbPlanTotal">'+sbPlans.length+'</span></span>'+
-      '<div class="sb-plan-nav">'+
-        '<button class="sb-arrow" id="sbPrev" title="上一个"'+(sbSel<=0?' disabled':'')+'>‹</button>'+
-        '<button class="sb-arrow" id="sbNext" title="下一个"'+(sbSel>=sbPlans.length-1?' disabled':'')+'>›</button>'+
-      '</div></div>';
-  }
-
   function showPlan(){
     var p=sbPlans[sbSel]; if(!p) return;
     // 方案切换器
@@ -1733,6 +1750,11 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(totEl) totEl.textContent=sbPlans.length+'';
     if(prev) prev.disabled=sbSel<=0;
     if(next) next.disabled=sbSel>=sbPlans.length-1;
+    // 顶部信息卡指标
+    var qtyEl=$('sbQty'), wtEl=$('sbWt'), volEl=$('sbVol');
+    if(qtyEl) qtyEl.textContent=p.itemsInBox+'';
+    if(wtEl) wtEl.textContent=f(p.weight||0,2)+' kg';
+    if(volEl) volEl.textContent=((p.itemVol||0)/1e6).toFixed(4)+' m³';
     // 左侧大信息卡片（运费 + KPI）
     var costEl=$('sbMainCard');
     if(costEl && p.fr){

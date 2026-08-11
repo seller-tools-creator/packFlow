@@ -1,4 +1,4 @@
-// 验证单箱装载结果布局：顶部可拖拽3D大图 + 醒目空间利用率 + 下方运费大卡片，点击放大进入全屏3D
+// 验证单箱装载结果布局：顶部可拖拽3D大图 + 下方信息卡（方案/数量/重量/体积/保存方案）+ 右侧体积利用率 + 运费大卡片
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('/Users/shitongsong/.workbuddy/binaries/node/workspace/node_modules/jsdom');
@@ -40,7 +40,16 @@ setTimeout(() => {
     assert('存在缩放滑块 sbZoom', !!$('sbZoom'));
     assert('存在重置视角按钮 sbReset', !!$('sbReset'));
     assert('存在放大按钮 sbMax', !!$('sbMax'));
-    assert('存在醒目空间利用率 sbUtilBig', !!$('sbUtilBig'));
+    assert('存在摘要行 sb-summary-row', !!doc.querySelector('.sb-summary-row'));
+    assert('存在信息卡 sb-info-card', !!doc.querySelector('.sb-info-card'));
+    assert('信息卡含方案切换器 sbPlanIdx/sbPlanTotal', !!$('sbPlanIdx') && !!$('sbPlanTotal'));
+    assert('信息卡含装载数量/重量/体积指标', !!$('sbQty') && !!$('sbWt') && !!$('sbVol'));
+    var saveBtn=$('sbSavePlan');
+    assert('存在保存方案按钮 sbSavePlan', !!saveBtn);
+    assert('保存按钮文字为“保存方案”', saveBtn && /保存方案/.test(saveBtn.textContent));
+    var utilBig=$('sbUtilBig');
+    assert('存在右侧体积利用率 sbUtilBig', !!utilBig);
+    assert('利用率数值已填充', !!utilBig && /%/.test(utilBig.textContent));
     assert('存在下方运费大卡片 sbMainCard', !!$('sbMainCard') && $('sbMainCard').innerHTML.length>50);
     assert('不存在旧的 sbCost', !$('sbCost'));
     assert('不存在旧的 sbMetrics', !$('sbMetrics'));
