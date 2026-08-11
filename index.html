@@ -110,8 +110,9 @@ details[open] summary::before{transform:rotate(45deg)}
 .prod-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
 .prod-idx{font-size:11.5px;font-weight:600;color:#fff;background:var(--ink);width:21px;height:21px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none}
 .prod .pname{flex:1;padding:5px 9px;font-size:12.5px}
-.prod .pcolor{height:30px;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:0 4px;background:var(--surface);color:var(--ink-2);font-family:inherit;cursor:pointer;flex:none}
+.prod .pcolor{height:30px;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:0 4px;background:var(--surface);color:var(--ink-2);font-family:inherit;cursor:pointer;width:120px}
 .prod .pcolor:focus{outline:none;border-color:var(--ink-2)}
+.prod-color-row{margin:4px 0 10px}
 .prod-del{border:none;background:transparent;color:var(--faint);font-size:19px;line-height:1;cursor:pointer;padding:0 2px}
 .prod-del:hover{color:#C0492F}
 .btn-add{width:100%;border:1px dashed var(--line-2);background:var(--surface);color:var(--muted);border-radius:10px;padding:9px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;margin-top:2px}
@@ -1319,8 +1320,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     div.innerHTML=
       '<div class="prod-top"><span class="prod-idx"></span>'+
       '<input type="text" class="pname" placeholder="产品名称（选填）" value="'+esc(p.name)+'">'+
-      '<select class="pcolor" title="产品颜色">'+colorOpts+'</select>'+
       '<button class="prod-del" title="删除">×</button></div>'+
+      '<div class="prod-color-row"><select class="pcolor" title="产品颜色">'+colorOpts+'</select></div>'+
       '<div class="row c3">'+
       '<div class="field"><label>长 <b>cm</b></label><input type="number" class="pl" value="'+p.l+'" min="0.1" step="0.5"></div>'+
       '<div class="field"><label>宽 <b>cm</b></label><input type="number" class="pw" value="'+p.w+'" min="0.1" step="0.5"></div>'+
