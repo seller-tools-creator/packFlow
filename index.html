@@ -133,7 +133,7 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-viz{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-top:16px;margin-bottom:16px;display:flex;flex-direction:column}
 .sb-viz canvas{display:block;width:100%;height:360px;cursor:grab;touch-action:none}
 .sb-viz canvas:active{cursor:grabbing}
-.sb-summary-row{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:stretch}
+.sb-summary-row{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch}
 @media(max-width:720px){.sb-summary-row{grid-template-columns:1fr}}
 .sb-right-col{display:flex;flex-direction:column;gap:16px}
 .sb-util-col{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #ffe8d6;border-radius:14px;background:#fffbf5;padding:18px}
@@ -1699,6 +1699,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '</div>'+
       '</div>'+
       '<div class="sb-main-card" id="sbMainCard"></div>'+
+      '<div id="sbMsg"></div>'+
+      '<div id="sbPer"></div>'+
       '<div class="sb-viz"><canvas id="stage3d"></canvas>'+
         '<div class="viz3d-tools">'+
           '<button id="sbMax" title="放大查看">⤢ 放大</button>'+
@@ -1707,8 +1709,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
         '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
       '</div>'+
-      '<div id="sbMsg"></div>'+
-      '<div id="sbPer"></div>'+
     '</div>';
     sbCanvas=$('stage3d');
     if(sbCanvas) init3d(sbCanvas);

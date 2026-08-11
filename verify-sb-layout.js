@@ -48,6 +48,12 @@ setTimeout(() => {
       var nodes=Array.from(mainCard.parentNode.children);
       return nodes.indexOf(viz) > nodes.indexOf(mainCard);
     })());
+    assert('装不下提示与SKU明细位于3D图上方', (function(){
+      var msg=$('sbMsg'), per=$('sbPer'), viz=doc.querySelector('.sb-viz');
+      if(!msg || !per || !viz) return false;
+      var nodes=Array.from(viz.parentNode.children);
+      return nodes.indexOf(msg) < nodes.indexOf(viz) && nodes.indexOf(per) < nodes.indexOf(viz);
+    })());
     var saveBadge=doc.querySelector('.save-badge');
     assert('运费卡片含节省徽标 save-badge', !!saveBadge && /节省/.test(saveBadge.textContent));
     assert('存在信息卡 sb-info-card', !!doc.querySelector('.sb-info-card'));
