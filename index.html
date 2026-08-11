@@ -681,7 +681,7 @@ var PackEngine = (function(){
     var blocks=[];
     for(var pi=0; pi<it.length; pi++){
       var item=it[pi];
-      var oris=orientations(item.l,item.w,item.h);
+      var oris = item.noRotate ? [[item.l,item.w,item.h]] : orientations(item.l,item.w,item.h);
       var need=item.need, got=0;
       while(need-got>EPS){
         var best=null;
@@ -1096,7 +1096,7 @@ var PackEngine = (function(){
       .map(function(b){return b.prodIndex+':'+Math.round(b.x)+','+Math.round(b.y)+','+Math.round(b.z)+':'+b.ori+':'+(b.cnt||1);}).join('|');
   }
 
-  // 多方案：用不同排序/分层/随机播种策略生成多份装法，去重后保留最多 8 个
+  // 多方案：① 不同排序/分层/随机播种；② 同一 SKU 的不同朝向混合摆放（如 8 竖 2 横）
   function seededShuffle(arr, seed){
     var a=arr.slice(), s=seed||1;
     for(var i=a.length-1;i>0;i--){
@@ -1106,7 +1106,29 @@ var PackEngine = (function(){
     }
     return a;
   }
+  function cloneExcept(src, skip){
+    var out=[];
+    for(var k=0;k<src.length;k++){ if(k===skip) continue; var x=src[k]; out.push({l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt}); }
+    return out;
+  }
+  function mkSub(base, o, need){
+    return {l:o[0],w:o[1],h:o[2],need:need,prodIndex:base.prodIndex,prodName:base.prodName,netVol:base.netVol,vol:base.vol,wt:base.wt,noRotate:true};
+  }
   function generateSinglePlans(L,W,H,capped,items,total,box,maxWt,opts){
+    opts=opts||{};
+    var depth=opts.depth||5;
+    var nameOf=function(ri){ return ['竖放','横放','侧放'][ri]||('朝向'+(ri+1)); };
+    var seen={}, plans=[];
+    function addPlan(packItems, label, d, sort){
+      var r=packOneBox(L,W,H,packItems,items,total,box,maxWt,d==null?depth:d,sort||'vol');
+      if(!r.ok) return;
+      var sig=layoutSig(r.blocks);
+      if(seen[sig]) return;
+      seen[sig]=1;
+      r.label=label;
+      plans.push(r);
+    }
+    // ① 排序 / 分层 / 随机播种：覆盖多 SKU 的摆放顺序差异
     var strats=[
       {label:'体积优先', sort:'vol', depth:5},
       {label:'体积升序', sort:'volasc', depth:5},
@@ -1121,20 +1143,42 @@ var PackEngine = (function(){
       {label:'均衡', sort:'maxdim', depth:3},
       {label:'紧凑', sort:'vol', depth:4}
     ];
-    // 随机播种：不同种子打乱装填顺序，保留输入序(as-is)，可产出更多不同稳定布局
     var seeds=[101, 211, 307, 419];
     for(var si=0;si<seeds.length;si++) strats.push({label:'智能装载'+(si+1), sort:'asis', depth:5, seed:seeds[si]});
-    var seen={}, plans=[];
     for(var s=0;s<strats.length;s++){
       var st=strats[s];
       var packItems = st.seed ? seededShuffle(capped, st.seed) : capped;
-      var r=packOneBox(L,W,H,packItems,items,total,box,maxWt,st.depth,st.sort);
-      if(!r.ok) continue;
-      var sig=layoutSig(r.blocks);
-      if(seen[sig]) continue;
-      seen[sig]=1;
-      r.label=st.label; r.sortKey=st.sort; r.depth=st.depth;
-      plans.push(r);
+      addPlan(packItems, st.label, st.depth, st.sort);
+    }
+    // ② 朝向混合：对每个 SKU，枚举不同朝向的占比分配（核心解决「单 SKU 也有多方案」）
+    for(var idx=0; idx<capped.length; idx++){
+      var base=capped[idx];
+      if(base.need<1) continue;
+      var os=orientations(base.l,base.w,base.h);
+      if(os.length<2) continue; // 立方体（所有朝向相同）无混合空间
+      os.sort(function(a,b){ return Math.max(b[0],b[1],b[2])-Math.max(a[0],a[1],a[2]); });
+      var rep=os.slice(0, Math.min(3, os.length));
+      // 纯朝向方案
+      for(var ri=0;ri<rep.length;ri++){
+        var o=rep[ri];
+        var its=cloneExcept(capped,idx);
+        its.push(mkSub(base,o,base.need));
+        addPlan(its, nameOf(ri), depth, 'vol');
+      }
+      // 主朝向 + 另一朝向填缝（如 8 竖 2 横 / 3 横 7 竖）
+      for(var a=0;a<rep.length;a++) for(var b=0;b<rep.length;b++){
+        if(a===b) continue;
+        var oa=rep[a], ob=rep[b];
+        var capA=cloneExcept(capped,idx); capA.push(mkSub(base,oa,base.need));
+        var rA=packOneBox(L,W,H,capA,items,total,box,maxWt,depth,'vol');
+        if(!rA.ok) continue;
+        var cA=rA.itemsInBox;
+        if(cA>=base.need) continue; // 该朝向已装下全部，无需混合
+        var mix=cloneExcept(capped,idx);
+        mix.push(mkSub(base,oa,cA));
+        mix.push(mkSub(base,ob,base.need-cA));
+        addPlan(mix, cA+nameOf(a)+' + '+(base.need-cA)+nameOf(b), depth, 'vol');
+      }
     }
     if(!plans.length) return {error:'此箱子装不下清单中的任何物品，请换更大的箱子', box:box};
     plans.sort(function(a,b){ return (b.itemsInBox-a.itemsInBox) || (a.boxesNeeded-b.boxesNeeded) || (a.unpacked-b.unpacked); });
@@ -1480,7 +1524,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       sbBox=null; sbBlocks=null; return;
     }
     var plansRow = sbPlans.length>1 ? buildPlansRow() : '';
-    var hint = sbPlans.length<5 ? '<div class="sb-hint">本次共生成 '+sbPlans.length+' 个不重复装法（清单 SKU 越多样、箱子越有余量，可选方案越多，最多 8 个）。</div>' : '';
+    var hint = sbPlans.length<5 ? '<div class="sb-hint">本次共生成 '+sbPlans.length+' 个不重复装法（同一产品换不同摆放朝向也会产生多种装法，最多 8 个）。</div>' : '';
     out.innerHTML='<div class="sec fade">'+plansRow+hint+
       '<div id="sbMsg"></div><div id="sbPer"></div>'+
       '<div class="viz3d"><canvas id="stage3d"></canvas>'+
@@ -1502,7 +1546,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   function buildPlansRow(){
     var h='<div class="sb-plans"><span class="sb-plans-label">方案</span>';
     for(var i=0;i<sbPlans.length;i++){
-      h+='<button class="chip'+(i===sbSel?' on':'')+'" data-i="'+i+'">方案'+(i+1)+' · 装'+sbPlans[i].itemsInBox+'</button>';
+      h+='<button class="chip'+(i===sbSel?' on':'')+'" data-i="'+i+'">'+esc(sbPlans[i].label)+' · 装'+sbPlans[i].itemsInBox+'</button>';
     }
     h+='</div>';
     return h;
