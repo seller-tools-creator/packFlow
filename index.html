@@ -387,15 +387,13 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
         <path d="M1.9 4.7 8 8.1l6.1-3.4M8 8.1v6.6" stroke="#fff" stroke-width="1.1" stroke-linejoin="round" opacity=".75"/>
       </svg>
     </div>
-    <div class="brand">PACKFLOW<span>装箱规划 · 多箱运费优化</span></div>
+    <div class="brand">PACKFLOW<span>多箱规划 · 运费优化</span></div>
     <div class="topbar-right">
       <div class="mode-tag" id="pillMode">单品装箱</div>
       <div class="pill" id="pillRule">体积重量 = 长×宽×高 ÷ 5000</div>
       <div class="act-bar">
         <button class="mini-btn ghost" id="btnCopy">复制方案</button>
-        <button class="mini-btn solid" id="btnSavePlan">保存方案</button>
       </div>
-      <span id="authSpot"></span>
     </div>
   </div>
 </div>
@@ -404,8 +402,8 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
   <div class="tabsinner">
     <div class="tabs">
       <button data-tab="single" class="on">📐 单箱装载</button>
-      <button data-tab="pack">📦 装箱规划</button>
-      <button data-tab="amz">🏷 亚马逊分仓测算</button>
+      <button data-tab="pack">📦 多箱规划</button>
+      <button data-tab="amz">🏷 分仓优化测算</button>
       <button data-tab="catalog">🗂️ 产品库</button>
     </div>
     <div class="tdesc" id="tabDesc">多箱运费优化 · 混装 · 省入仓费</div>
@@ -558,7 +556,7 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
 
       <div class="group" data-panel="single">
         <div class="glabel">单箱装载（指定一只箱子）</div>
-        <div class="hint" style="margin:-2px 0 10px">把「装箱规划」里的商品尽量装进这<b>一只</b>箱子。装不下会提示预计还需几个外箱。</div>
+        <div class="hint" style="margin:-2px 0 10px">把「多箱规划」里的商品尽量装进这<b>一只</b>箱子。装不下会提示预计还需几个外箱。</div>
         <div class="row c3">
           <div class="field"><label>箱长 <b>cm</b></label><input type="number" id="sbL" value="60" min="1" step="1"></div>
           <div class="field"><label>箱宽 <b>cm</b></label><input type="number" id="sbW" value="40" min="1" step="1"></div>
@@ -596,29 +594,6 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
 
 <div class="toast" id="toast"></div>
 
-<!-- 登录 / 注册 弹窗 -->
-<div class="overlay" id="authOverlay">
-  <div class="modal" role="dialog" aria-modal="true">
-    <div class="modal-head">
-      <div>
-        <div class="brand-sm">PACKFLOW</div>
-        <h3 id="authTitle">欢迎回来</h3>
-      </div>
-      <button class="x" id="authClose" aria-label="关闭">×</button>
-    </div>
-    <div class="modal-tabs">
-      <button id="tabLogin" class="on">登录</button>
-      <button id="tabSignup">注册</button>
-    </div>
-    <div class="modal-body">
-      <div class="field"><label for="auEmail">邮箱</label><input type="email" id="auEmail" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="field"><label for="auPw">密码</label><input type="password" id="auPw" placeholder="至少 6 位" autocomplete="current-password"></div>
-      <div class="modal-err" id="authErr"></div>
-      <button class="modal-submit" id="authSubmit">登录</button>
-      <div class="modal-hint" id="authHint">还没有账号？<span class="link" id="authSwitch">去注册</span></div>
-    </div>
-  </div>
-</div>
 
 <!-- 产品库 面板 -->
 <div class="wrap catalog-wrap" data-panel="catalog" style="display:none">
@@ -632,20 +607,11 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
         <button class="btn-add" id="btnAddFromCatalog">＋ 从当前清单加入产品库</button>
         <button class="mini-btn ghost" id="btnClearCatalog">清空产品库</button>
       </div>
-      <div id="catalogList"><div class="drawer-empty"><b>暂无产品</b>在装箱规划页填写产品并计算后，会自动收藏到这里。</div></div>
+      <div id="catalogList"><div class="drawer-empty"><b>暂无产品</b>在多箱规划页填写产品并计算后，会自动收藏到这里。</div></div>
     </div>
   </div>
 </div>
 
-<!-- 我的方案 抽屉 -->
-<div class="drawer" id="planDrawer">
-  <div class="drawer-head">
-    <h3>我的方案</h3>
-    <button class="x" id="planClose" aria-label="关闭">×</button>
-  </div>
-  <div class="drawer-body" id="planList"></div>
-</div>
-<div class="overlay" id="drawerMask"></div>
 
 <!-- ===================== 计算引擎 ===================== -->
 <script id="engine">
@@ -1022,7 +988,7 @@ var PackEngine = (function(){
     };
   }
 
-  /* ============ 亚马逊分仓测算 ============ */
+  /* ============ 分仓优化测算 ============ */
   /* 2024 入仓配置费（USD/件）：minimal=发 1 个仓付费；optimized=发 4+ 个相同仓免费 */
   var TIERS = {
     small: {name:'Small standard 小标准件', bands:[{max:1, lo:0.21, hi:0.30}]},
@@ -1251,7 +1217,7 @@ var PackEngine = (function(){
       work.push({l:l,w:w,h:h,need:q,prodIndex:i,prodName:it.name||('产品'+(i+1)),netVol:vol,vol:vol,wt:wt,color:it.color||''});
       total+=q;
     }
-    if(!total) return {error:'清单为空，请先在「装箱规划」添加产品'};
+    if(!total) return {error:'清单为空，请先在「多箱规划」添加产品'};
 
     // 重量上限：把重量预算按品种贪心分配，截断到单箱总重量不超 maxWt
     var capped=work.map(function(x){ return {l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt,color:x.color||''}; });
@@ -1728,7 +1694,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var opt=collect();
     var t0=performance.now();
     if(tab()==='amz'){
-      $('pillMode').textContent='亚马逊分仓';
+      $('pillMode').textContent='分仓优化';
       $('pillRule').textContent='入仓配置费(USD) · 头程 ¥/kg';
       var ra; try{ ra=PackEngine.analyzeAmazon(opt); }catch(e){ ra={error:'计算出错：'+e.message}; }
       var ms=Math.round(performance.now()-t0);
@@ -1927,7 +1893,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   function copyAmazon(){
     if(!lastResult||!lastResult.products){ toast('暂无可复制的方案'); return; }
     var r=lastResult, L=[];
-    L.push('【亚马逊分仓测算 · PACKFLOW】');
+    L.push('【分仓优化测算 · PACKFLOW】');
     L.push('结论：'+(r.recommend==='B'?'分 '+r.splitN+' 仓（'+r.westC+'美西+'+r.eastC+'美东）更省，省 ¥'+f(r.savings,2):'不分仓更省，省 ¥'+f(-r.savings,2)));
     L.push('计费重 '+f(r.chargeable,1)+' kg（实重 '+f(r.actWt,1)+' / 体积重 '+f(r.volWt,1)+'，除数 '+r.divisor+'） · 汇率 '+r.rate);
     L.push('');
@@ -2002,16 +1968,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     function fallback(tx){ var ta=document.createElement('textarea'); ta.value=tx; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('方案已复制');}catch(x){toast('复制失败');} document.body.removeChild(ta); }
   });
 
-  /* 保存方案（静态按钮）：未登录先弹登录框 */
-  $('btnSavePlan').addEventListener('click', function(){
-    if(!auth.user){ openAuth(); toast('请先登录后再保存方案'); return; }
-    savePlan();
-  });
-  /* 点击页面其它区域关闭账户下拉菜单 */
-  document.addEventListener('click', function(){
-    var m=$('acctMenu'); if(m) m.classList.remove('open');
-    var a=$('acctBtn'); if(a) a.classList.remove('open');
-  });
 
   function schedule(){ clearTimeout(timer); timer=setTimeout(render,180); }
 
@@ -2052,7 +2008,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   function renderCatalog(){
     var wrap=$('catalogList'); if(!wrap) return;
     var list=readCatalog();
-    if(!list.length){ wrap.innerHTML='<div class="drawer-empty"><b>暂无产品</b>在装箱规划页填写产品并计算后，会自动收藏到这里。</div>'; return; }
+    if(!list.length){ wrap.innerHTML='<div class="drawer-empty"><b>暂无产品</b>在多箱规划页填写产品并计算后，会自动收藏到这里。</div>'; return; }
     var html='<div class="catalog-grid">';
     for(var i=0;i<list.length;i++){
       var p=list[i], k=catalogKey(p);
@@ -2117,193 +2073,6 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   syncGroups(); updSplitN();
   render();
 
-  /* ===================== 账户：注册/登录 + 方案存储 ===================== */
-  var auth = { user:null };
-  var planCache = [];
-  function api(method, path, body){
-    var req;
-    try {
-      req = fetch(path, {
-        method:method, credentials:'same-origin',
-        headers: body ? {'Content-Type':'application/json'} : {},
-        body: body ? JSON.stringify(body) : undefined
-      });
-    } catch (e) {
-      return Promise.reject(e);
-    }
-    return req.then(function(r){
-      return r.json().then(function(d){ return { ok:r.ok, status:r.status, data:d }; });
-    });
-  }
-
-  /* 序列化当前所有参数为可存储对象 */
-  function serializeState(){
-    return {
-      tab: tab(),
-      products: collectProducts(),
-      mode: mode(),
-      autoBox: $('autoBox').checked,
-      boxesTarget: $('boxesTarget').value,
-      maxSku: $('maxSku').value,
-      useCustom: $('useCustom').checked,
-      customList: $('customList').value,
-      step: $('step').value, maxLen: $('maxLen').value, maxWid: $('maxWid').value, maxHt: $('maxHt').value, minSide: $('minSide').value, maxSum: $('maxSum').value,
-      divisor: $('divisor').value, price: $('price').value, minChg: $('minChg').value, minBill: $('minBill').value,
-      maxWt: $('maxWt').value,
-      overFrom: $('overFrom').value, overTo: $('overTo').value, overRate: $('overRate').value,
-      longFrom: $('longFrom').value, longTo: $('longTo').value, longRate: $('longRate').value,
-      gap: $('gap').value, wall: $('wall').value, scanMaxBoxes: $('scanMaxBoxes').value, depth: $('depth').value,
-      amzRate: $('amzRate').value, amzDivisor: $('amzDivisor').value, amzWest: $('amzWest').value, amzEast: $('amzEast').value,
-      amzWestN: $('amzWestN').value, amzEastN: $('amzEastN').value, amzFeePoint: $('amzFeePoint').value
-    };
-  }
-  /* 从存储方案回填界面 */
-  function applyState(cfg){
-    if(!cfg) return;
-    var box=$('products'); box.innerHTML='';
-    (cfg.products||[]).forEach(function(p){ addProduct(p); });
-    if(!cfg.products || !cfg.products.length) addProduct({l:20,w:15,h:8,wt:0,qty:60,name:''});
-    setMode(cfg.mode||'free');
-    $('autoBox').checked = (cfg.autoBox!==false);
-    $('boxesTarget').value = (cfg.boxesTarget!=null?cfg.boxesTarget:5);
-    $('maxSku').value = cfg.maxSku||5;
-    $('useCustom').checked = !!cfg.useCustom;
-    $('useCustom').dispatchEvent(new Event('change'));
-    $('customList').value = cfg.customList||'';
-    $('step').value = cfg.step||5; $('maxLen').value = cfg.maxLen||91.44; $('maxWid').value = cfg.maxWid||63.5; $('maxHt').value = cfg.maxHt||63.5; $('minSide').value = cfg.minSide||10; $('maxSum').value = cfg.maxSum||'';
-    $('divisor').value = cfg.divisor||5000; $('price').value = cfg.price||8; $('minChg').value = cfg.minChg||12; $('minBill').value = cfg.minBill||5; $('maxWt').value = cfg.maxWt||30;
-    $('overFrom').value = cfg.overFrom||30; $('overTo').value = cfg.overTo||45; $('overRate').value = cfg.overRate||1.5;
-    $('longFrom').value = cfg.longFrom||120; $('longTo').value = cfg.longTo||200; $('longRate').value = cfg.longRate||1.5;
-    $('gap').value = cfg.gap||0; $('wall').value = cfg.wall||0; $('scanMaxBoxes').value = cfg.scanMaxBoxes||10; $('depth').value = cfg.depth||2;
-    $('amzRate').value = cfg.amzRate||7.2; $('amzDivisor').value = cfg.amzDivisor||5000; $('amzWest').value = cfg.amzWest||8; $('amzEast').value = cfg.amzEast||12;
-    $('amzWestN').value = cfg.amzWestN||3; $('amzEastN').value = cfg.amzEastN||2; $('amzFeePoint').value = cfg.amzFeePoint||'mid';
-    if(cfg.tab) setTab(cfg.tab);
-    else setTab('single');
-    syncGroups(); updSplitN(); render();
-  }
-  function summarize(){
-    if(!lastResult) return null;
-    if(tab()==='amz'){
-      var r=lastResult;
-      var best = r.recommend==='B' ? r.totalB : r.totalA;
-      return { type:'amazon', line:(r.recommend==='B'?'分仓方案B':'单仓方案A')+' ≈ ¥'+f(best,0)+' · 较另一方案省 ¥'+f(Math.abs(r.savings),0) };
-    }
-    var r2=lastResult;
-    return { type:'pack', line:(r2.mode==='identical'?'同款箱×':'多箱×')+r2.N+' 箱 · 运费 ¥'+f(r2.total.freight,0) };
-  }
-
-  /* 顶栏鉴权区渲染 */
-  function renderAuthUI(){
-    var spot=$('authSpot');
-    if(auth.user){
-      spot.innerHTML='<div class="acct" id="acctBtn"><span class="ue" title="'+esc(auth.user.email)+'">'+esc(auth.user.email)+'</span><span class="chev">▾</span></div>'+
-        '<div class="acct-menu" id="acctMenu">'+
-          '<button id="btnMyPlans"><span class="ico">📁</span>我的方案</button>'+
-          '<div class="sep"></div>'+
-          '<button id="btnLogout" class="danger"><span class="ico">⏻</span>退出登录</button>'+
-        '</div>';
-      $('btnMyPlans').addEventListener('click', openDrawer);
-      $('btnLogout').addEventListener('click', doLogout);
-      $('acctBtn').addEventListener('click', function(e){ e.stopPropagation(); var m=$('acctMenu'), a=$('acctBtn'); m.classList.toggle('open'); a.classList.toggle('open'); });
-    } else {
-      spot.innerHTML='<button class="auth-btn primary" id="btnLogin">登录 / 注册</button>';
-      $('btnLogin').addEventListener('click', openAuth);
-    }
-  }
-
-  /* 登录/注册弹窗 */
-  var authMode='login';
-  function setAuthMode(){
-    $('tabLogin').classList.toggle('on', authMode==='login');
-    $('tabSignup').classList.toggle('on', authMode==='signup');
-    $('authTitle').textContent = authMode==='login'?'欢迎回来':'创建账号';
-    $('authSubmit').textContent = authMode==='login'?'登 录':'注册并登录';
-    $('authHint').innerHTML = authMode==='login'? '还没有账号？<span class="link" id="authSwitch">去注册</span>' : '已有账号？<span class="link" id="authSwitch">去登录</span>';
-    $('auPw').setAttribute('autocomplete', authMode==='login'?'current-password':'new-password');
-    bindSwitch();
-  }
-  function bindSwitch(){
-    var s=$('authSwitch'); if(s) s.addEventListener('click', function(){ authMode = authMode==='login'?'signup':'login'; setAuthMode(); $('authErr').textContent=''; });
-  }
-  function openAuth(){ authMode='login'; setAuthMode(); $('authErr').textContent=''; $('authOverlay').classList.add('on'); setTimeout(function(){$('auEmail').focus();},60); }
-  function closeAuth(){ $('authOverlay').classList.remove('on'); $('authErr').textContent=''; }
-  function submitAuth(){
-    var email=$('auEmail').value.trim(), pw=$('auPw').value;
-    if(!email || !pw){ $('authErr').textContent='请填写邮箱和密码'; return; }
-    var path = authMode==='login' ? '/api/login' : '/api/signup';
-    api('POST', path, {email:email, password:pw}).then(function(res){
-      if(res.ok){ auth.user=res.data.user; closeAuth(); renderAuthUI(); toast('已登录 '+auth.user.email); loadPlans(); }
-      else { $('authErr').textContent = res.data.error || '操作失败'; }
-    }).catch(function(){ $('authErr').textContent='网络错误：后端是否已启动？'; });
-  }
-
-  /* 方案抽屉 */
-  function openDrawer(){ if(!auth.user){ openAuth(); return; } loadPlans(); $('planDrawer').classList.add('on'); $('drawerMask').classList.add('on'); }
-  function closeDrawer(){ $('planDrawer').classList.remove('on'); $('drawerMask').classList.remove('on'); }
-  function loadPlans(){
-    api('GET','/api/plans').then(function(res){
-      var el=$('planList');
-      if(!res.ok){ el.innerHTML='<div class="drawer-empty">加载失败：'+(res.data.error||'未知错误')+'</div>'; return; }
-      planCache = res.data.plans || [];
-      if(!planCache.length){ el.innerHTML='<div class="drawer-empty"><b>还没有保存的方案</b>在左侧设置好参数、生成方案后，点右上角「保存方案」即可存到这里，下次登录随时调出。</div>'; return; }
-      var html='';
-      planCache.forEach(function(p){
-        var d=new Date(p.createdAt); var ds=d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-        var sum=p.summary&&p.summary.line?(' · '+p.summary.line):'';
-        html+='<div class="plan-item"><div class="pn">'+esc(p.name)+'</div>'+
-          '<div class="pd">'+ds+sum+'</div>'+
-          '<div class="pa"><button class="load" data-id="'+p.id+'">载入</button>'+
-          '<button class="del" data-id="'+p.id+'">删除</button></div></div>';
-      });
-      el.innerHTML=html;
-      var ls=el.querySelectorAll('.load'), ds2=el.querySelectorAll('.del');
-      for(var i=0;i<ls.length;i++) ls[i].addEventListener('click', function(){ applyPlanById(this.getAttribute('data-id')); });
-      for(var j=0;j<ds2.length;j++) ds2[j].addEventListener('click', function(){ deletePlan(this.getAttribute('data-id')); });
-    }).catch(function(){ $('planList').innerHTML='<div class="drawer-empty">网络错误，无法加载方案</div>'; });
-  }
-  function applyPlanById(id){
-    for(var i=0;i<planCache.length;i++){
-      if(planCache[i].id===id){
-        applyState(planCache[i].config);
-        closeDrawer(); toast('已载入：'+planCache[i].name); return;
-      }
-    }
-    toast('方案未找到，请刷新列表');
-  }
-  function deletePlan(id){
-    api('DELETE','/api/plans/'+id).then(function(res){
-      if(res.ok){ toast('已删除'); loadPlans(); } else toast(res.data.error||'删除失败');
-    }).catch(function(){ toast('删除失败：网络错误'); });
-  }
-  function savePlan(){
-    if(!auth.user){ openAuth(); return; }
-    if(!lastResult){ toast('请先生成方案再保存'); return; }
-    var def = (tab()==='amz'?'亚马逊分仓方案':'装箱方案')+' '+new Date().toLocaleDateString('zh-CN');
-    var name = window.prompt('给这个方案起个名字：', def);
-    if(name===null || !name.trim()) return;
-    api('POST','/api/plans',{ name:name.trim(), config:serializeState(), summary:summarize() }).then(function(res){
-      if(res.ok){ toast('已保存：'+res.data.name); } else toast(res.data.error||'保存失败');
-    }).catch(function(){ toast('保存失败：网络错误'); });
-  }
-  function doLogout(){
-    api('POST','/api/logout').then(function(){ auth.user=null; planCache=[]; renderAuthUI(); toast('已退出登录'); }).catch(function(){ auth.user=null; renderAuthUI(); });
-  }
-
-  /* 事件绑定 */
-  $('authClose').addEventListener('click', closeAuth);
-  $('authOverlay').addEventListener('click', function(e){ if(e.target===this) closeAuth(); });
-  $('tabLogin').addEventListener('click', function(){ authMode='login'; setAuthMode(); });
-  $('tabSignup').addEventListener('click', function(){ authMode='signup'; setAuthMode(); });
-  $('authSubmit').addEventListener('click', submitAuth);
-  $('auPw').addEventListener('keydown', function(e){ if(e.key==='Enter') submitAuth(); });
-  $('auEmail').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('auPw').focus(); } });
-  $('planClose').addEventListener('click', closeDrawer);
-  $('drawerMask').addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeAuth(); closeDrawer(); } });
-
-  /* 初始化：探测登录态 */
-  api('GET','/api/me').then(function(res){ if(res.ok) auth.user=res.data.user; renderAuthUI(); })
-    .catch(function(){ renderAuthUI(); });
   updateCatalogBadge();
 })();
 </script>
