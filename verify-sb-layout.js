@@ -41,6 +41,9 @@ setTimeout(() => {
     assert('存在重置视角按钮 sbReset', !!$('sbReset'));
     assert('存在放大按钮 sbMax', !!$('sbMax'));
     assert('存在摘要行 sb-summary-row', !!doc.querySelector('.sb-summary-row'));
+    assert('3D图位于右侧列 sb-right-col', !!$('stage3d') && !!$('stage3d').closest('.sb-right-col'));
+    var saveBadge=doc.querySelector('.save-badge');
+    assert('运费卡片含节省徽标 save-badge', !!saveBadge && /节省/.test(saveBadge.textContent));
     assert('存在信息卡 sb-info-card', !!doc.querySelector('.sb-info-card'));
     assert('信息卡含方案切换器 sbPlanIdx/sbPlanTotal', !!$('sbPlanIdx') && !!$('sbPlanTotal'));
     assert('信息卡含装载数量/重量/体积指标', !!$('sbQty') && !!$('sbWt') && !!$('sbVol'));

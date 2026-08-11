@@ -130,23 +130,25 @@ details[open] summary::before{transform:rotate(45deg)}
 .viz3d-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px}
 .viz3d-tools button{border:1px solid var(--line-2);background:rgba(255,255,255,.9);color:var(--ink-2);border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
 .viz3d-tools button:hover{border-color:var(--ink-2)}
-.sb-viz{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-bottom:16px;display:flex;flex-direction:column}
+.sb-viz{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-bottom:0;display:flex;flex-direction:column}
 .sb-viz canvas{display:block;width:100%;height:360px;cursor:grab;touch-action:none}
 .sb-viz canvas:active{cursor:grabbing}
-.sb-summary-row{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:16px;margin-bottom:16px;align-items:stretch}
+.sb-summary-row{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;margin-bottom:16px;align-items:start}
 @media(max-width:720px){.sb-summary-row{grid-template-columns:1fr}}
-.sb-info-card{background:#f8fbff;border:1px solid #d6e8ff;border-radius:14px;padding:16px;display:flex;flex-direction:column}
-.sb-info-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.sb-info-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-top:1px solid #dbe8ff;border-bottom:1px solid #dbe8ff;padding:14px 0;margin-bottom:14px;text-align:center}
+.sb-right-col{display:flex;flex-direction:column;gap:16px}
+.sb-info-card{background:#f8fbff;border:1px solid #d6e8ff;border-radius:14px;padding:14px;display:flex;flex-direction:column}
+.sb-info-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sb-info-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid #dbe8ff;border-bottom:1px solid #dbe8ff;padding:12px 0;margin-bottom:12px;text-align:center}
 .sb-info-metrics>div{display:flex;flex-direction:column;gap:4px}
-.sb-info-metrics .sb-info-label{font-size:11px;color:#7b879b;letter-spacing:.03em}
-.sb-info-metrics b{font-size:18px;font-weight:700;color:#1f2338;white-space:nowrap}
-.sb-save-btn{width:100%;padding:10px 12px;border:1px solid #c9d3e8;background:#fff;border-radius:9px;font-size:13px;font-weight:600;color:#3a4a6d;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:auto}
+.sb-info-metrics .sb-info-label{font-size:10.5px;color:#7b879b;letter-spacing:.03em}
+.sb-info-metrics b{font-size:16px;font-weight:700;color:#1f2338;white-space:nowrap}
+.sb-save-btn{width:100%;padding:9px 12px;border:1px solid #c9d3e8;background:#fff;border-radius:9px;font-size:13px;font-weight:600;color:#3a4a6d;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:auto}
 .sb-save-btn:hover{background:#f1f6ff;border-color:#9ab5e6}
-.sb-util-col{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #ffe8d6;border-radius:14px;background:#fffbf5}
+.sb-util-col{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #ffe8d6;border-radius:14px;background:#fffbf5;padding:18px}
 .sb-util-label{font-size:16px;font-weight:700;color:#d35400;margin-bottom:2px}
-.sb-util-val{font-size:52px;font-weight:800;color:#e67e22;letter-spacing:-1px;line-height:1}
+.sb-util-val{font-size:56px;font-weight:800;color:#e67e22;letter-spacing:-1px;line-height:1}
 .sb-main-card{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow-s)}
+.save-badge{margin-left:14px;font-size:13px;font-weight:600;color:#1f8a3b;background:#eafaf0;border:1px solid #bfe3c6;border-radius:999px;padding:5px 13px;white-space:nowrap;align-self:center}
 .zoom-row{display:flex;align-items:center;gap:10px;padding:9px 14px 12px;background:rgba(255,255,255,.5);border-top:1px solid var(--line)}
 .zoom-row span{font-size:11px;color:var(--muted);flex:none;user-select:none}
 .zoom-row span:first-child{margin-right:2px}
@@ -1672,16 +1674,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var fr=PackEngine.computeFreight(volW, pp.weight, longest, sbBill);
       pp.fr=fr; pp.totalFreight=fr.freight*pp.boxesNeeded;
     }
-    // 单箱结果：顶部可拖拽3D大图 → 醒目空间利用率 → 运费大卡片 → 提示/明细
+    // 单箱结果：左侧窄信息卡 + 右侧（体积利用率 + 底部3D大图）→ 下方运费大卡片 → 提示/明细
     out.innerHTML='<div class="sec fade">'+
-      '<div class="sb-viz"><canvas id="stage3d"></canvas>'+
-        '<div class="viz3d-tools">'+
-          '<button id="sbMax" title="放大查看">⤢ 放大</button>'+
-          '<button id="sbReset">重置视角</button>'+
-        '</div>'+
-        '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
-        '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
-      '</div>'+
       '<div class="sb-summary-row">'+
         '<div class="sb-info-card">'+
           '<div class="sb-info-head">'+
@@ -1698,9 +1692,19 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
           '</div>'+
           '<button class="sb-save-btn" id="sbSavePlan" title="保存方案">保存方案</button>'+
         '</div>'+
-        '<div class="sb-util-col">'+
-          '<div class="sb-util-label">体积利用率</div>'+
-          '<div class="sb-util-val" id="sbUtilBig">--</div>'+
+        '<div class="sb-right-col">'+
+          '<div class="sb-util-col">'+
+            '<div class="sb-util-label">体积利用率</div>'+
+            '<div class="sb-util-val" id="sbUtilBig">--</div>'+
+          '</div>'+
+          '<div class="sb-viz"><canvas id="stage3d"></canvas>'+
+            '<div class="viz3d-tools">'+
+              '<button id="sbMax" title="放大查看">⤢ 放大</button>'+
+              '<button id="sbReset">重置视角</button>'+
+            '</div>'+
+            '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
+            '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
+          '</div>'+
         '</div>'+
       '</div>'+
       '<div class="sb-main-card" id="sbMainCard"></div>'+
@@ -1762,8 +1766,11 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var tf=p.totalFreight, chg=p.fr.chargeable*p.boxesNeeded, vw=p.fr.volW*p.boxesNeeded, rw=p.fr.realWt*p.boxesNeeded, sur=p.fr.surcharge*p.boxesNeeded;
       var costTxt = price>0 ? '¥'+f(tf,2) : f(chg,1)+' kg';
       var perTxt = price>0 ? '¥'+f(tf/p.total,2) : f(chg/p.total,3)+' kg';
+      // 节省：按省 20% 空间对应的运费估算（= 总运费 × 20%）
+      var saveTxt = price>0 ? '¥'+f(tf*0.2,2) : f(chg*0.2,1)+' kg';
       costEl.innerHTML='<div class="tagline"><span class="badge">单箱装载</span><em>'+p.total+' 件 · 需 '+p.boxesNeeded+' 个外箱</em></div>'+
-        '<div class="dims num"><span class="big">'+costTxt+'</span></div>'+
+        '<div class="dims num"><span class="big">'+costTxt+'</span>'+
+          '<span class="save-badge" title="按节省 20% 空间估算的运费收益">节省 '+saveTxt+' · 省20%空间</span></div>'+
         '<div class="subline">总运费（'+p.boxesNeeded+' 箱合计）· 单件均运费 <b>'+perTxt+'</b>'+(sur>0.005?' · 含附加费 <b>¥'+f(sur,2)+'</b>':'')+'</div>'+
         '<div class="kpis">'+
           '<div class="kpi"><div class="k">总计费重量</div><div class="v num">'+f(chg,1)+'<small>kg</small></div></div>'+
