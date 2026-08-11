@@ -2090,10 +2090,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   function r_chosenN(){ return lastResult?lastResult.chosenN:5; }
 
   updateModeNote();
-  // 默认示例：3 种 SKU，演示多箱 + 同款箱
+  // 默认：单箱装载发货清单，初始仅 1 个 SKU，用户按需点「添加 SKU」增加
   addProduct({l:20,w:15,h:8,wt:0.2,qty:120,name:'SKU-A 抱枕'});
-  addProduct({l:12,w:12,h:12,wt:0.3,qty:80,name:'SKU-B 方块'});
-  addProduct({l:30,w:20,h:10,wt:0.5,qty:60,name:'SKU-C 长盒'});
   syncGroups(); updSplitN();
   render();
 
