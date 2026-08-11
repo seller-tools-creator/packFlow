@@ -166,6 +166,15 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-perprod .pp{border:1px solid var(--line-2);border-radius:9px;padding:7px 11px;font-size:12px;background:var(--surface)}
 .sb-perprod .pp b{font-weight:600}
 .sb-perprod .pp .ok{color:#1f8a3b}
+.sb-cost{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow-s)}
+.sb-cost .tagline{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.sb-cost .tagline em{font-style:normal;color:var(--faint);font-size:13px}
+.overlay-max{position:fixed;inset:0;background:rgba(15,23,42,.96);z-index:200;display:none;flex-direction:column}
+.overlay-max.on{display:flex}
+.overlay-max .max-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;color:#e2e8f0;font-size:14px}
+.overlay-max .max-bar button{border:1px solid #475569;background:#1e293b;color:#e2e8f0;border-radius:8px;padding:6px 14px;cursor:pointer;font-family:inherit;font-size:13px}
+.overlay-max .max-bar button:hover{background:#334155}
+#stage3dMax{width:100%;height:100%;flex:1;display:block;cursor:grab}
 .sb-perprod .pp .no{color:#c0392b}
 
 
@@ -571,19 +580,46 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
         <button class="btn-primary" id="btnSingle" style="margin-top:6px">⚙ 装载分析</button>
         <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果" style="margin-top:8px;width:100%">清空</button>
         <div id="sbPlanHead" style="display:none"></div>
-        <div id="sbMsg" style="display:none"></div>
-        <div id="sbMetrics" style="display:none" class="sb-metrics">
-          <div class="sb-m-row"><div class="sb-m-label">体积利用率 <span class="qtip" title="装入物品总体积 / 箱子体积">?</span></div><div class="sb-m-val" id="sbUtil">--</div></div>
-          <div class="sb-m-grid">
-            <div><span class="sb-m-sublabel">装载数量</span><b id="sbQty">--</b></div>
-            <div><span class="sb-m-sublabel">装载重量</span><b id="sbWt">--</b></div>
-            <div><span class="sb-m-sublabel">体积</span><b id="sbVol">--</b></div>
-          </div>
-        </div>
-        <div id="sbPlanLabel" style="display:none"></div>
-        <div id="sbPer" style="display:none"></div>
       </div>
-
+      <div class="group" data-panel="single">
+        <div class="glabel">计费规则</div>
+        <div class="hint" style="margin:-2px 0 10px">按「体积重量 = 长×宽×高 ÷ 除数」与实重取大值计费，单箱结果乘以外箱数量估算总运费。</div>
+        <div class="row c2">
+          <div class="field"><label>体积重除数</label>
+            <select id="sbDivisor">
+              <option value="5000" selected>5000（快递/空运）</option>
+              <option value="6000">6000</option>
+              <option value="4000">4000</option>
+              <option value="8000">8000</option>
+            </select>
+          </div>
+          <div class="field"><label>单价 <b>元/kg</b></label><input type="number" id="sbPrice" value="8" min="0" step="1"></div>
+        </div>
+        <div class="row c2">
+          <div class="field"><label>起收重量 <b>kg</b></label><input type="number" id="sbMinChg" value="12" min="0" step="1"></div>
+          <div class="field"><label>单箱最低计费 <b>kg</b></label><input type="number" id="sbMinBill" value="5" min="0" step="0.5"></div>
+        </div>
+        <details>
+          <summary>高级参数（附加费与精度）</summary>
+          <div class="row c3">
+            <div class="field"><label>超重起 <b>kg</b></label><input type="number" id="sbOverFrom" value="30" min="0" step="1"></div>
+            <div class="field"><label>超重止 <b>kg</b></label><input type="number" id="sbOverTo" value="45" min="0" step="1"></div>
+            <div class="field"><label>超重附加 <b>元/kg</b></label><input type="number" id="sbOverRate" value="1.5" min="0" step="0.1"></div>
+          </div>
+          <div class="hint">实重在「超重起~超重止」区间，每 kg 加收该附加费（对计费重量计）。</div>
+          <div class="row c3">
+            <div class="field"><label>长边起 <b>cm</b></label><input type="number" id="sbLongFrom" value="120" min="0" step="1"></div>
+            <div class="field"><label>长边止 <b>cm</b></label><input type="number" id="sbLongTo" value="200" min="0" step="1"></div>
+            <div class="field"><label>长边附加 <b>元/kg</b></label><input type="number" id="sbLongRate" value="1.5" min="0" step="0.1"></div>
+          </div>
+          <div class="hint">最长边在「长边起~长边止」区间，每 kg 加收该附加费（对计费重量计）。</div>
+          <div class="row c2">
+            <div class="field"><label>产品间隙 <b>cm/件</b></label><input type="number" id="sbGap" value="0" min="0" step="0.1"></div>
+            <div class="field"><label>纸箱壁厚 <b>cm/边</b></label><input type="number" id="sbWall" value="0" min="0" step="0.1"></div>
+          </div>
+          <div class="hint">壁厚：内尺寸→外尺寸（计费尺寸）每边增加值。</div>
+        </details>
+      </div>
     </div>
   </aside>
 
@@ -593,6 +629,12 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- 单箱 3D 放大全屏视图 -->
+<div class="overlay-max" id="sbMaxOverlay">
+  <div class="max-bar"><span>箱子 3D 放大视图 · 拖动旋转 · 滚轮缩放</span><button id="sbMaxClose">✕ 关闭</button></div>
+  <canvas id="stage3dMax"></canvas>
+</div>
 
 
 <!-- 产品库 面板 -->
@@ -1240,7 +1282,7 @@ var PackEngine = (function(){
   return {orientations:orientations, packRec:packRec, packMulti:packMulti, parseBoxes:parseBoxes,
           computeFreight:computeFreight, bestBoxFor:bestBoxFor, distributeFree:distributeFree,
           evalFree:evalFree, evalIdentical:evalIdentical, plan:plan, analyzeAmazon:analyzeAmazon,
-          packSingleBox:packSingleBox};
+          packSingleBox:packSingleBox, computeFreight:computeFreight};
 })();
 if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
 </script>
@@ -1253,7 +1295,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   var out=$('out'), toastEl=$('toast'), timer=null, lastResult=null;
   var CATALOG_KEY='packflow_catalog_v1';
   var sbRot={yaw:0.62,pitch:0.5,zoom:1}, sbBox=null, sbBlocks=null, sb3dInited=false;
-  var sbPlans=[], sbSel=0, sbCanvas=null;
+  var sbPlans=[], sbSel=0, sbCanvas=null, sbBill=null;
+  var sbMaxRot={yaw:0.62,pitch:0.5,zoom:1}, sbMaxInited=false;
 
   var PALETTE=[
     ['#8FA3BF','#7A90AE','#6B8099'],
@@ -1402,6 +1445,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var cw=canvas.clientWidth||300, chh=236;
     canvas.width=cw*dpr; canvas.height=chh*dpr;
     var g=canvas.getContext('2d');
+    if(!g) return;
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,cw,chh);
     var L=box[0], W=box[1], H=box[2];
     var COS=Math.cos(Math.PI/6), SIN=Math.sin(Math.PI/6);
@@ -1467,6 +1511,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var cw=canvas.clientWidth||480, chh=canvas.clientHeight||340;
     canvas.width=cw*dpr; canvas.height=chh*dpr;
     var g=canvas.getContext('2d');
+    if(!g) return;
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,cw,chh);
     var L=box[0],W=box[1],H=box[2];
     var maxDim=Math.max(L,W,H,1);
@@ -1614,19 +1659,67 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     $('sbPlanHead').innerHTML=buildPlanHead();
     $('sbPrev').addEventListener('click',function(){ if(sbSel>0){ sbSel--; showPlan(); } });
     $('sbNext').addEventListener('click',function(){ if(sbSel<sbPlans.length-1){ sbSel++; showPlan(); } });
-    // 右侧：仅保留 3D 视图（指标/明细已移至左侧方案下）
+    // 计费规则 → 估算每箱运费，乘外箱数量
+    sbBill = readSingleBill();
+    var wall=sbBill.wall, oL=L+2*wall, oW=W+2*wall, oH=H+2*wall;
+    var volW=(oL*oW*oH)/sbBill.divisor;
+    var longest=Math.max(oL,oW,oH);
+    for(var pi2=0; pi2<sbPlans.length; pi2++){
+      var pp=sbPlans[pi2];
+      var fr=PackEngine.computeFreight(volW, pp.weight, longest, sbBill);
+      pp.fr=fr; pp.totalFreight=fr.freight*pp.boxesNeeded;
+    }
+    // 右侧：3D（带放大）+ 运费卡片 + 指标 + 明细
     out.innerHTML='<div class="sec fade">'+
       '<div class="viz3d"><canvas id="stage3d"></canvas>'+
-        '<div class="viz3d-tools"><button id="sbReset">重置视角</button></div>'+
+        '<div class="viz3d-tools"><button id="sbMax" title="放大查看">⤢ 放大</button><button id="sbReset">重置视角</button></div>'+
         '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
         '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
-      '</div>';
+      '</div>'+
+      '<div class="sb-cost" id="sbCost"></div>'+
+      '<div class="sb-metrics" id="sbMetrics">'+
+        '<div class="sb-m-row"><div class="sb-m-label">体积利用率 <span class="qtip" title="装入物品总体积 / 箱子体积">?</span></div><div class="sb-m-val" id="sbUtil">--</div></div>'+
+        '<div class="sb-m-grid">'+
+          '<div><span class="sb-m-sublabel">装载数量</span><b id="sbQty">--</b></div>'+
+          '<div><span class="sb-m-sublabel">装载重量</span><b id="sbWt">--</b></div>'+
+          '<div><span class="sb-m-sublabel">体积</span><b id="sbVol">--</b></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="sb-plan-label" id="sbPlanLabel"></div>'+
+      '<div id="sbMsg"></div>'+
+      '<div id="sbPer"></div>'+
+    '</div>';
     sbCanvas=$('stage3d');
     if(sbCanvas) init3d(sbCanvas);
     var sbZoom=$('sbZoom'); if(sbZoom) bindZoomSlider(sbZoom, sbCanvas, sbRot);
     var resetBtn=$('sbReset'); if(resetBtn) resetBtn.addEventListener('click',function(){ sbRot.yaw=0.62; sbRot.pitch=0.5; sbRot.zoom=1; if(sbRot._zoomEl) sbRot._zoomEl.value=1; showPlan(); });
+    var maxBtn=$('sbMax'); if(maxBtn) maxBtn.addEventListener('click', openMax3d);
     showPlan();
   }
+
+  function readSingleBill(){
+    return {
+      divisor:num('sbDivisor',5000), price:num('sbPrice',8), minChg:num('sbMinChg',12), minBill:num('sbMinBill',5),
+      overFrom:num('sbOverFrom',30), overTo:num('sbOverTo',45), overRate:num('sbOverRate',1.5),
+      longFrom:num('sbLongFrom',120), longTo:num('sbLongTo',200), longRate:num('sbLongRate',1.5),
+      gap:num('sbGap',0), wall:num('sbWall',0)
+    };
+  }
+
+  function openMax3d(){
+    if(!sbBox||!sbBlocks) return;
+    var ov=$('sbMaxOverlay'); if(!ov) return;
+    ov.classList.add('on');
+    var c=$('stage3dMax'); if(!c) return;
+    sbMaxRot._sliderEnabled=true; // 放大视图滚轮默认可用
+    if(!sbMaxInited){
+      init3d(c, function(){ return {box:sbBox, blocks:sbBlocks, rot:sbMaxRot}; });
+      var cb=$('sbMaxClose'); if(cb) cb.addEventListener('click', closeMax3d);
+      sbMaxInited=true;
+    }
+    draw3d(c, sbBox, sbBlocks, sbMaxRot);
+  }
+  function closeMax3d(){ var ov=$('sbMaxOverlay'); if(ov) ov.classList.remove('on'); }
 
   function buildPlanHead(){
     return '<div class="sb-plan-head">'+
@@ -1647,7 +1740,24 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(next) next.disabled=sbSel>=sbPlans.length-1;
     if(labelEl) labelEl.innerHTML='<span class="chip on">'+esc(p.label)+'</span> · 装入 '+p.itemsInBox+' 个物品';
     if(labelEl) labelEl.style.display='block';
-    // 指标卡（已移至左侧方案下）
+    // 运费卡片
+    var costEl=$('sbCost');
+    if(costEl && p.fr){
+      var price=sbBill.price;
+      var tf=p.totalFreight, chg=p.fr.chargeable*p.boxesNeeded, vw=p.fr.volW*p.boxesNeeded, rw=p.fr.realWt*p.boxesNeeded, sur=p.fr.surcharge*p.boxesNeeded;
+      var costTxt = price>0 ? '¥'+f(tf,2) : f(chg,1)+' kg';
+      var perTxt = price>0 ? '¥'+f(tf/p.total,2) : f(chg/p.total,3)+' kg';
+      costEl.innerHTML='<div class="tagline"><span class="badge">单箱装载</span><em>'+p.total+' 件 · 需 '+p.boxesNeeded+' 个外箱</em></div>'+
+        '<div class="dims num"><span class="big">'+costTxt+'</span></div>'+
+        '<div class="subline">总运费（'+p.boxesNeeded+' 箱合计）· 单件均运费 <b>'+perTxt+'</b>'+(sur>0.005?' · 含附加费 <b>¥'+f(sur,2)+'</b>':'')+'</div>'+
+        '<div class="kpis">'+
+          '<div class="kpi"><div class="k">总计费重量</div><div class="v num">'+f(chg,1)+'<small>kg</small></div></div>'+
+          '<div class="kpi"><div class="k">总体积重量</div><div class="v num">'+f(vw,1)+'<small>kg</small></div></div>'+
+          '<div class="kpi"><div class="k">总实重</div><div class="v num">'+f(rw,1)+'<small>kg</small></div></div>'+
+          '<div class="kpi hl"><div class="k">单箱最低计费</div><div class="v num">'+f(sbBill.minBill,0)+'<small>kg</small></div></div>'+
+        '</div>';
+    }
+    // 指标卡
     var utilEl=$('sbUtil'), qtyEl=$('sbQty'), wtEl=$('sbWt'), volEl=$('sbVol');
     if(utilEl) utilEl.textContent=f((p.util||0)*100,1)+'%';
     if(qtyEl) qtyEl.textContent=p.itemsInBox+'';
@@ -2059,11 +2169,13 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   window.addEventListener('resize',function(){
     if(lastResult&&$('stage')) draw($('stage'),lastResult.rep.box,lastResult.rep.blocks);
     if(tab()==='single'&&$('stage3d')) draw3d($('stage3d'),sbBox,sbBlocks);
+    if($('sbMaxOverlay')&&$('sbMaxOverlay').classList.contains('on')&&$('stage3dMax')) draw3d($('stage3dMax'),sbBox,sbBlocks,sbMaxRot);
   });
   $('btnSingle').addEventListener('click', computeSingle);
   $('btnClearSingle').addEventListener('click', clearSingle);
   $('sbL').addEventListener('change',computeSingle); $('sbW').addEventListener('change',computeSingle);
   $('sbH').addEventListener('change',computeSingle); $('sbMaxWt').addEventListener('change',computeSingle);
+  ['sbDivisor','sbPrice','sbMinChg','sbMinBill','sbOverFrom','sbOverTo','sbOverRate','sbLongFrom','sbLongTo','sbLongRate','sbGap','sbWall'].forEach(function(id){ var el=$(id); if(el) el.addEventListener('change',computeSingle); });
   $('sbDepth').addEventListener('change',computeSingle);
   function r_chosenN(){ return lastResult?lastResult.chosenN:5; }
 
