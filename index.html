@@ -110,6 +110,8 @@ details[open] summary::before{transform:rotate(45deg)}
 .prod-top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
 .prod-idx{font-size:11.5px;font-weight:600;color:#fff;background:var(--ink);width:21px;height:21px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:none}
 .prod .pname{flex:1;padding:5px 9px;font-size:12.5px}
+.prod .pcolor{height:30px;border:1px solid var(--line);border-radius:8px;font-size:12px;padding:0 4px;background:var(--surface);color:var(--ink-2);font-family:inherit;cursor:pointer;flex:none}
+.prod .pcolor:focus{outline:none;border-color:var(--ink-2)}
 .prod-del{border:none;background:transparent;color:var(--faint);font-size:19px;line-height:1;cursor:pointer;padding:0 2px}
 .prod-del:hover{color:#C0492F}
 .btn-add{width:100%;border:1px dashed var(--line-2);background:var(--surface);color:var(--muted);border-radius:10px;padding:9px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;margin-top:2px}
@@ -725,7 +727,7 @@ var PackEngine = (function(){
         var bsp=best.sp;
         blocks.push({x:bsp.x,y:bsp.y,z:bsp.z,a:best.o[0],b:best.o[1],c:best.o[2],
           nx:best.nx,ny:best.ny,nz:best.nz,ori:best.oi,cnt:best.can,
-          prodIndex:item.prodIndex,prodName:item.prodName,netVol:item.netVol});
+          prodIndex:item.prodIndex,prodName:item.prodName,netVol:item.netVol,color:item.color||''});
         got+=best.can; placed+=best.can;
         spaces.splice(best.si,1);
         if(best.occL<bsp.l-EPS) spaces.push({x:bsp.x+best.occL,y:bsp.y,z:bsp.z,l:bsp.l-best.occL,w:bsp.w,h:bsp.h});
@@ -794,7 +796,7 @@ var PackEngine = (function(){
       var it=items[i];
       if(!(it.need>0 && it.l>0 && it.w>0 && it.h>0)) continue;
       ri.push({l:it.l+gap,w:it.w+gap,h:it.h+gap,wt:it.wt,need:it.need,prodIndex:it.prodIndex,prodName:it.prodName,
-               netVol:it.l*it.w*it.h, vol:(it.l+gap)*(it.w+gap)*(it.h+gap)});
+               netVol:it.l*it.w*it.h, vol:(it.l+gap)*(it.w+gap)*(it.h+gap), color:it.color||''});
     }
     if(!ri.length) return {ok:false, reason:'empty'};
     var totalNeed=0, totalNet=0, totalWt=0, minEdge=0, j;
@@ -815,7 +817,8 @@ var PackEngine = (function(){
       var bx=boxes[j], BL=bx[0], BW=bx[1], BH=bx[2];
       var res, cap, blocks;
       if(ri.length>1){ res=packMulti(BL,BW,BH,ri,depth); cap=res.ok?1:0; blocks=res.blocks; }
-      else { var oris=orientations(ri[0].l,ri[0].w,ri[0].h); res=packRec(BL,BW,BH,oris,depth,memo); cap=res.count; blocks=res.blocks; }
+      else { var oris=orientations(ri[0].l,ri[0].w,ri[0].h); res=packRec(BL,BW,BH,oris,depth,memo); cap=res.count; blocks=res.blocks;
+        for(var zi=0;zi<blocks.length;zi++){ blocks[zi].color=ri[0].color; blocks[zi].prodIndex=ri[0].prodIndex; blocks[zi].prodName=ri[0].prodName; } }
       if(cap<1) continue;
       var oL=BL+wall, oW=BW+wall, oH=BH+wall;
       var volW=(oL*oW*oH)/opt.divisor;
@@ -880,7 +883,7 @@ var PackEngine = (function(){
     var out=[], total=0;
     for(var b=0;b<d.boxes.length;b++){
       var map=d.boxes[b].map, items=[];
-      for(var key in map){ var idx=+key, pr=products[idx]; items.push({l:pr.l,w:pr.w,h:pr.h,wt:pr.wt,need:map[key],prodIndex:idx,prodName:pr.name}); }
+      for(var key in map){ var idx=+key, pr=products[idx]; items.push({l:pr.l,w:pr.w,h:pr.h,wt:pr.wt,need:map[key],prodIndex:idx,prodName:pr.name,color:pr.color||''}); }
       var br=bestBoxFor(items,opt);
       if(!br.ok) return {feasible:false, err:'第 '+(b+1)+' 箱无法装入任何箱规（产品过大或单边受限），请增加箱数 / 放宽约束'};
       out.push(br); total+=br.fr.freight;
@@ -898,7 +901,7 @@ var PackEngine = (function(){
     for(i=0;i<products.length;i++){ perBoxRealWt += perBox[i]*(products[i].wt||0); }
     if(opt.maxWeight>0 && perBoxRealWt > opt.maxWeight+1e-9) return {feasible:false, err:'同款箱每箱实重 '+perBoxRealWt.toFixed(1)+'kg 超过单箱限重 '+opt.maxWeight+'kg（'+Math.round(opt.maxWeight/0.45359237)+'lb），请增加箱数 N'};
     var items=[];
-    for(i=0;i<products.length;i++){ if(perBox[i]>0) items.push({l:products[i].l,w:products[i].w,h:products[i].h,wt:products[i].wt,need:perBox[i],prodIndex:i,prodName:products[i].name}); }
+    for(i=0;i<products.length;i++){ if(perBox[i]>0) items.push({l:products[i].l,w:products[i].w,h:products[i].h,wt:products[i].wt,need:perBox[i],prodIndex:i,prodName:products[i].name,color:products[i].color||''}); }
     var br=bestBoxFor(items,opt);
     if(!br.ok) return {feasible:false, err:'同款箱装不下（单箱放不下 '+N+' 等分后的数量），请增加箱数 / 放宽约束', remTotal:remTotal};
     return {feasible:true, total:br.fr.freight*N, perBox:perBox, remTotal:remTotal, boxRes:br};
@@ -913,7 +916,7 @@ var PackEngine = (function(){
         var pr=opt.products[p];
         var l=+pr.l, w=+pr.w, h=+pr.h;
         if(!(l>0&&w>0&&h>0)) continue;
-        products.push({l:l,w:w,h:h,wt:+pr.wt||0,qty:Math.max(1,Math.round(+pr.qty||1)),name:pr.name||('产品'+(p+1)),idx:p,netVol:l*w*h});
+        products.push({l:l,w:w,h:h,wt:+pr.wt||0,qty:Math.max(1,Math.round(+pr.qty||1)),name:pr.name||('产品'+(p+1)),idx:p,netVol:l*w*h,color:pr.color||''});
       }
     }
     if(!products.length) return {error:'请填写有效的产品尺寸与总数量'};
@@ -1137,11 +1140,11 @@ var PackEngine = (function(){
   }
   function cloneExcept(src, skip){
     var out=[];
-    for(var k=0;k<src.length;k++){ if(k===skip) continue; var x=src[k]; out.push({l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt}); }
+    for(var k=0;k<src.length;k++){ if(k===skip) continue; var x=src[k]; out.push({l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt,color:x.color||''}); }
     return out;
   }
   function mkSub(base, o, need){
-    return {l:o[0],w:o[1],h:o[2],need:need,prodIndex:base.prodIndex,prodName:base.prodName,netVol:base.netVol,vol:base.vol,wt:base.wt,noRotate:true};
+    return {l:o[0],w:o[1],h:o[2],need:need,prodIndex:base.prodIndex,prodName:base.prodName,netVol:base.netVol,vol:base.vol,wt:base.wt,color:base.color||'',noRotate:true};
   }
   function generateSinglePlans(L,W,H,capped,items,total,box,maxWt,opts){
     opts=opts||{};
@@ -1226,13 +1229,13 @@ var PackEngine = (function(){
       var l=+it.l, w=+it.w, h=+it.h, q=Math.max(0,Math.round(+it.qty||0)), wt=+it.wt||0;
       if(!(l>0&&w>0&&h>0) || q<=0) continue;
       var vol=l*w*h;
-      work.push({l:l,w:w,h:h,need:q,prodIndex:i,prodName:it.name||('产品'+(i+1)),netVol:vol,vol:vol,wt:wt});
+      work.push({l:l,w:w,h:h,need:q,prodIndex:i,prodName:it.name||('产品'+(i+1)),netVol:vol,vol:vol,wt:wt,color:it.color||''});
       total+=q;
     }
     if(!total) return {error:'清单为空，请先在「装箱规划」添加产品'};
 
     // 重量上限：把重量预算按品种贪心分配，截断到单箱总重量不超 maxWt
-    var capped=work.map(function(x){ return {l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt}; });
+    var capped=work.map(function(x){ return {l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt,color:x.color||''}; });
     if(maxWt>0){
       capped.sort(function(a,b){ return (b.wt*b.need)-(a.wt*a.need); });
       var capW=maxWt;
@@ -1277,6 +1280,26 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     ['#9DB0A0','#8A9E8D','#768A78'],
     ['#BBA98C','#A8977A','#938568']
   ];
+  // 产品可选颜色（'自动'=跟随索引调色板，其余为指定色）
+  var SKU_COLORS=[
+    {name:'自动',hex:''},
+    {name:'红',hex:'#E5604D'},
+    {name:'橙',hex:'#F0922E'},
+    {name:'黄',hex:'#E7B416'},
+    {name:'绿',hex:'#3FAE6F'},
+    {name:'青',hex:'#33B1C2'},
+    {name:'蓝',hex:'#4F86E8'},
+    {name:'紫',hex:'#9566D6'},
+    {name:'粉',hex:'#E86FA8'},
+    {name:'棕',hex:'#A9794F'},
+    {name:'灰',hex:'#8A93A2'},
+    {name:'黑',hex:'#474C57'}
+  ];
+  // 取一个 block 的 3D 配色（3 个明度档）；若产品指定了颜色则用它派生
+  function colorFor(bd){
+    if(bd && bd.color) return [bd.color, shadeColor(bd.color,0.80,1), shadeColor(bd.color,0.95,1)];
+    return PALETTE[((bd&&bd.prodIndex)||0)%PALETTE.length];
+  }
 
   function num(id,dflt){ var v=parseFloat($(id).value); return isNaN(v)?dflt:v; }
   function f(v,d){ d=d==null?1:d; if(!isFinite(v)) v=0; return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:d}); }
@@ -1288,12 +1311,14 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   var seq=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'];
 
   function addProduct(p){
-    p=p||{l:20,w:15,h:8,wt:0,qty:60,name:''};
+    p=p||{l:20,w:15,h:8,wt:0,qty:60,name:'',color:''};
     var div=document.createElement('div');
     div.className='prod';
+    var colorOpts=SKU_COLORS.map(function(c){ return '<option value="'+c.hex+'"'+(p.color===c.hex?' selected':'')+'>'+c.name+'</option>'; }).join('');
     div.innerHTML=
       '<div class="prod-top"><span class="prod-idx"></span>'+
       '<input type="text" class="pname" placeholder="产品名称（选填）" value="'+esc(p.name)+'">'+
+      '<select class="pcolor" title="产品颜色">'+colorOpts+'</select>'+
       '<button class="prod-del" title="删除">×</button></div>'+
       '<div class="row c3">'+
       '<div class="field"><label>长 <b>cm</b></label><input type="number" class="pl" value="'+p.l+'" min="0.1" step="0.5"></div>'+
@@ -1310,6 +1335,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     });
     var ins=div.querySelectorAll('input');
     for(var i=0;i<ins.length;i++){ ins[i].addEventListener('input',schedule); ins[i].addEventListener('change',schedule); }
+    var pc=div.querySelector('.pcolor'); if(pc){ pc.addEventListener('change',schedule); }
     reindex();
   }
   function reindex(){
@@ -1322,7 +1348,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var r=rows[i];
       arr.push({l:parseFloat(r.querySelector('.pl').value)||0,w:parseFloat(r.querySelector('.pw').value)||0,
         h:parseFloat(r.querySelector('.ph').value)||0,wt:parseFloat(r.querySelector('.pwt').value)||0,
-        qty:parseInt(r.querySelector('.pqty').value)||1,name:r.querySelector('.pname').value||('产品'+(i+1))});
+        qty:parseInt(r.querySelector('.pqty').value)||1,name:r.querySelector('.pname').value||('产品'+(i+1)),
+        color:r.querySelector('.pcolor').value||''});
     }
     return arr;
   }
@@ -1416,7 +1443,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var cells=[];
     if(total<=260){
       for(bi=0;bi<blocks.length;bi++){
-        var bd=blocks[bi], cols=PALETTE[(bd.prodIndex||0)%PALETTE.length];
+        var bd=blocks[bi], cols=colorFor(bd);
         var cnt=bd.cnt||(bd.nx*bd.ny*bd.nz), gi=0;
         for(var iz=0;iz<bd.nz && gi<cnt;iz++)for(var iy=0;iy<bd.ny && gi<cnt;iy++)for(var ix=0;ix<bd.nx && gi<cnt;ix++){
           cells.push({x:bd.x+ix*bd.a,y:bd.y+iy*bd.b,z:bd.z+iz*bd.c,a:bd.a,b:bd.b,c:bd.c,cols:cols});
@@ -1427,7 +1454,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       for(bi=0;bi<blocks.length;bi++){ var bb=blocks[bi];
         var cnt=bb.cnt||(bb.nx*bb.ny*bb.nz), perLayer=bb.nx*bb.ny, fullL=Math.floor(cnt/perLayer), rem=cnt-perLayer*fullL;
         var occH=(fullL+(rem>0?1:0))*bb.c;
-        cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:occH,cols:PALETTE[(bb.prodIndex||0)%PALETTE.length]}); }
+        cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:occH,cols:colorFor(bb)}); }
     }
     cells.sort(function(m,n){ return (m.x+m.y+m.z)-(n.x+n.y+n.z); });
     for(i=0;i<cells.length;i++){ var cc=cells[i]; cuboid(cc.x,cc.y,cc.z,cc.a,cc.b,cc.c,cc.cols); }
@@ -1496,7 +1523,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     for(bi=0;bi<blocks.length;bi++) total+=(blocks[bi].cnt||(blocks[bi].nx*blocks[bi].ny*blocks[bi].nz));
     var cells=[];
     if(total<=400){
-      for(bi=0;bi<blocks.length;bi++){ var bd=blocks[bi], cols=PALETTE[(bd.prodIndex||0)%PALETTE.length];
+      for(bi=0;bi<blocks.length;bi++){ var bd=blocks[bi], cols=colorFor(bd);
         var cnt=bd.cnt||(bd.nx*bd.ny*bd.nz), gi=0;
         for(var iz=0;iz<bd.nz && gi<cnt;iz++)for(var iy=0;iy<bd.ny && gi<cnt;iy++)for(var ix=0;ix<bd.nx && gi<cnt;ix++){
           cells.push({x:bd.x+ix*bd.a,y:bd.y+iy*bd.b,z:bd.z+iz*bd.c,a:bd.a,b:bd.b,c:bd.c,cols:cols});
@@ -1507,7 +1534,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       for(bi=0;bi<blocks.length;bi++){ var bb=blocks[bi];
         var cnt=bb.cnt||(bb.nx*bb.ny*bb.nz), perLayer=bb.nx*bb.ny, fullL=Math.floor(cnt/perLayer), rem=cnt-perLayer*fullL;
         var occH=(fullL+(rem>0?1:0))*bb.c;
-        cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:occH,cols:PALETTE[(bb.prodIndex||0)%PALETTE.length]}); }
+        cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:occH,cols:colorFor(bb)}); }
     }
     for(var ci=0;ci<cells.length;ci++){ var cc=cells[ci]; pushBox(cc.x,cc.y,cc.z,cc.a,cc.b,cc.c,cc.cols,1); }
     faces.sort(function(m,n){return m.depth-n.depth;});
@@ -1638,7 +1665,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     for(var i=0;i<blocks.length;i++){
       var b=blocks[i], n=b.cnt||(b.nx*b.ny*b.nz);
       if(!n) continue;
-      var cols=PALETTE[(b.prodIndex||0)%PALETTE.length];
+      var cols=colorFor(b);
       var occ=(b.a*b.b*b.c*n)/boxVol;
       var name = ('<b>'+esc(b.prodName||('产品'+((b.prodIndex||0)+1)))+'</b> · ');
       html+='<div class="lay"><span class="chip" style="background:'+cols[0]+'"></span><div style="flex:1">'+
@@ -1876,7 +1903,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var chips='';
     if(b.items){
       for(var i=0;i<cap;i++){
-        var it=b.items[i], col=PALETTE[(it.prodIndex||0)%PALETTE.length];
+        var it=b.items[i], col=colorFor(it);
         chips+='<div class="ci"><span class="dot" style="background:'+col[0]+'"></span>'+
           esc(it.prodName||('产品'+((it.prodIndex||0)+1)))+' · '+f(it.l,1)+'×'+f(it.w,1)+'×'+f(it.h,1)+
           (it.wt>0?' · '+f(it.wt,2)+'kg':'')+'<b>×'+it.need+'</b></div>';
