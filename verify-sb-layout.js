@@ -41,7 +41,13 @@ setTimeout(() => {
     assert('存在重置视角按钮 sbReset', !!$('sbReset'));
     assert('存在放大按钮 sbMax', !!$('sbMax'));
     assert('存在摘要行 sb-summary-row', !!doc.querySelector('.sb-summary-row'));
-    assert('3D图位于右侧列 sb-right-col', !!$('stage3d') && !!$('stage3d').closest('.sb-right-col'));
+    assert('3D图位于运费大卡片下方', (function(){
+      var mainCard=$('sbMainCard');
+      var viz=doc.querySelector('.sb-viz');
+      if(!mainCard || !viz) return false;
+      var nodes=Array.from(mainCard.parentNode.children);
+      return nodes.indexOf(viz) > nodes.indexOf(mainCard);
+    })());
     var saveBadge=doc.querySelector('.save-badge');
     assert('运费卡片含节省徽标 save-badge', !!saveBadge && /节省/.test(saveBadge.textContent));
     assert('存在信息卡 sb-info-card', !!doc.querySelector('.sb-info-card'));
