@@ -129,6 +129,24 @@ details[open] summary::before{transform:rotate(45deg)}
 .viz3d-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px}
 .viz3d-tools button{border:1px solid var(--line-2);background:rgba(255,255,255,.9);color:var(--ink-2);border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
 .viz3d-tools button:hover{border-color:var(--ink-2)}
+.sb-plan-head{display:flex;align-items:center;justify-content:space-between;background:#f0f7ff;border:1px solid #d6e8ff;border-radius:12px;padding:10px 12px;margin-top:12px}
+.sb-plan-title{font-size:15px;font-weight:700;color:#1a4a8a}
+.sb-plan-title b{font-weight:800}
+.sb-plan-nav{display:flex;gap:6px}
+.sb-arrow{width:30px;height:30px;border:1px solid #bcd7f7;background:#fff;border-radius:8px;color:#1a4a8a;font-size:18px;line-height:1;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;justify-content:center}
+.sb-arrow:hover:not(:disabled){background:#e6f1ff;border-color:#8ab8f2}
+.sb-arrow:disabled{opacity:.4;cursor:not-allowed}
+.sb-metrics{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow-s)}
+.sb-m-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line-2)}
+.sb-m-label{font-size:15px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.qtip{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--line-2);color:var(--faint);font-size:11px;cursor:help}
+.sb-m-val{font-size:36px;font-weight:800;color:#e67e22;letter-spacing:-1px}
+.sb-m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center}
+.sb-m-grid>div{display:flex;flex-direction:column;gap:4px}
+.sb-m-sublabel{font-size:12px;color:var(--faint);font-weight:500}
+.sb-m-grid b{font-size:16px;font-weight:700;color:var(--ink)}
+.sb-plan-label{margin-bottom:10px}
+.sb-plan-label .chip{background:var(--ink);color:#fff;border-color:var(--ink);border-radius:999px;font-size:12.5px;padding:5px 12px}
 .sb-msg{margin-top:14px;border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.6;border:1px solid var(--line-2);background:var(--surface)}
 .sb-msg.ok{border-color:#bfe3c6;background:#f1faf3}
 .sb-msg.bad{border-color:#f3c9c9;background:#fdf3f3}
@@ -136,11 +154,6 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-msg .ok-c{color:#1f8a3b}
 .sb-msg .bad-c{color:#c0392b}
 .sb-perprod{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
-.sb-plans{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
-.sb-plans-label{font-size:13px;font-weight:600;color:var(--ink-2);margin-right:2px}
-.sb-plans .chip{border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);border-radius:999px;font-size:12.5px;padding:6px 13px;cursor:pointer;font-family:inherit;transition:.15s}
-.sb-plans .chip:hover{border-color:var(--ink-2)}
-.sb-plans .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .sb-hint{margin-top:10px;font-size:12px;color:var(--faint);background:var(--surface);border:1px dashed var(--line-2);border-radius:9px;padding:8px 12px}
 .sb-perprod .pp{border:1px solid var(--line-2);border-radius:9px;padding:7px 11px;font-size:12px;background:var(--surface)}
 .sb-perprod .pp b{font-weight:600}
@@ -553,6 +566,7 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
           <button class="btn-primary" id="btnSingle">⚙ 装载分析</button>
           <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果">清空</button>
         </div>
+        <div id="sbPlanHead" style="display:none"></div>
       </div>
 
     </div>
@@ -1084,17 +1098,29 @@ var PackEngine = (function(){
     var unpacked=total-itemsInBox;
     var allFit = unpacked<=0;
     var boxesNeeded = allFit ? 1 : Math.ceil(total/Math.max(1,itemsInBox));
+    var boxVol=L*W*H;
+    var itemVol=0, totalWeight=0;
+    for(var bk=0;bk<blocks.length;bk++){
+      var b=blocks[bk], n=b.cnt||(b.nx*b.ny*b.nz);
+      itemVol += n*b.netVol;
+      // 通过 prodIndex 找回原始重量
+      var pwt=0;
+      for(var pi=0;pi<items.length;pi++){ if(pi===b.prodIndex){ pwt=+items[pi].wt||0; break; } }
+      totalWeight += n*pwt;
+    }
+    var util = boxVol>0 ? itemVol/boxVol : 0;
     // 各品种装入/未装入明细（基于原始清单，重量截断只影响装箱）
     var perProd=[];
     for(var i=0;i<items.length;i++){
       var it=items[i]; var l=+it.l,w=+it.w,h=+it.h,q=Math.max(0,Math.round(+it.qty||0));
       if(!(l>0&&w>0&&h>0)||q<=0) continue;
       var inBox=0;
-      for(var bk=0;bk<blocks.length;bk++){ if(blocks[bk].prodIndex===i) inBox+=(blocks[bk].cnt||(blocks[bk].nx*blocks[bk].ny*blocks[bk].nz)); }
+      for(var bkk=0;bkk<blocks.length;bkk++){ if(blocks[bkk].prodIndex===i) inBox+=(blocks[bkk].cnt||(blocks[bkk].nx*blocks[bkk].ny*blocks[bkk].nz)); }
       perProd.push({name:it.name||('产品'+(i+1)), qty:q, inBox:inBox, left:Math.max(0,q-inBox)});
     }
     return {ok:true, box:box, blocks:blocks, itemsInBox:itemsInBox, unpacked:unpacked,
-            total:total, allFit:allFit, boxesNeeded:boxesNeeded, perProd:perProd, maxWt:maxWt};
+            total:total, allFit:allFit, boxesNeeded:boxesNeeded, perProd:perProd, maxWt:maxWt,
+            util:util, weight:totalWeight, itemVol:itemVol, boxVol:boxVol};
   }
 
   // 布局签名：用于对不同方案的摆放去重（位置+朝向+数量）
@@ -1518,6 +1544,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(tab()!=='single') return;
     $('sbL').value=60; $('sbW').value=40; $('sbH').value=40;
     $('sbMaxWt').value=''; $('sbDepth').value='2';
+    var head=$('sbPlanHead'); if(head){ head.style.display='none'; head.innerHTML=''; }
     out.innerHTML='<div class="sec fade"><div class="empty">输入箱子尺寸后点击「装载分析」，即可查看单箱能装多少、剩余需几个外箱，以及多种摆放方案。</div></div>';
     sbPlans=[]; sbSel=0; sbBox=null; sbBlocks=null; sbCanvas=null;
     toast('已清空单箱装载输入与结果');
@@ -1531,17 +1558,32 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var products=collectProducts();
     var r; try{ r=PackEngine.packSingleBox([L,W,H], products, {maxWeight:maxWt, depth:depth, plans:true}); }catch(e){ r={error:'计算出错：'+e.message}; }
     if(r.error){
+      $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
       sbBox=null; sbBlocks=null; sbPlans=[]; return;
     }
     sbPlans = r.plans||[]; sbSel = r.best||0;
     if(!sbPlans.length){
+      $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
       out.innerHTML='<div class="sec fade"><div class="empty"><b>没有可行方案</b><br>请调整箱子尺寸或单箱限重。</div></div>';
       sbBox=null; sbBlocks=null; return;
     }
-    var plansRow = sbPlans.length>1 ? buildPlansRow() : '';
-    var hint = sbPlans.length<5 ? '<div class="sb-hint">本次共生成 '+sbPlans.length+' 个不重复装法（同一产品换不同摆放朝向也会产生多种装法，最多 8 个）。</div>' : '';
-    out.innerHTML='<div class="sec fade">'+plansRow+hint+
+    // 左侧：方案切换器
+    $('sbPlanHead').style.display='block';
+    $('sbPlanHead').innerHTML=buildPlanHead();
+    $('sbPrev').addEventListener('click',function(){ if(sbSel>0){ sbSel--; showPlan(); } });
+    $('sbNext').addEventListener('click',function(){ if(sbSel<sbPlans.length-1){ sbSel++; showPlan(); } });
+    // 右侧：指标卡 + 消息 + 明细 + 3D
+    out.innerHTML='<div class="sec fade">'+
+      '<div class="sb-metrics">'+
+        '<div class="sb-m-row"><div class="sb-m-label">体积利用率 <span class="qtip" title="装入物品总体积 / 箱子体积">?</span></div><div class="sb-m-val" id="sbUtil">--</div></div>'+
+        '<div class="sb-m-grid">'+
+          '<div><span class="sb-m-sublabel">装载数量</span><b id="sbQty">--</b></div>'+
+          '<div><span class="sb-m-sublabel">装载重量</span><b id="sbWt">--</b></div>'+
+          '<div><span class="sb-m-sublabel">体积</span><b id="sbVol">--</b></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="sb-plan-label" id="sbPlanLabel"></div>'+
       '<div id="sbMsg"></div><div id="sbPer"></div>'+
       '<div class="viz3d"><canvas id="stage3d"></canvas>'+
         '<div class="viz3d-tools"><button id="sbReset">重置视角</button></div>'+
@@ -1549,40 +1591,48 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       '</div>';
     sbCanvas=$('stage3d');
     if(sbCanvas) init3d(sbCanvas);
-    if(sbPlans.length>1){
-      var chips=document.querySelectorAll('#sbPlans .chip');
-      for(var ci=0;ci<chips.length;ci++){
-        (function(idx){ chips[ci].addEventListener('click',function(){ sbSel=idx; showPlan(); }); })(ci);
-      }
-    }
     var resetBtn=$('sbReset'); if(resetBtn) resetBtn.addEventListener('click',function(){ sbRot={yaw:0.62,pitch:0.5,zoom:1}; showPlan(); });
     showPlan();
   }
 
-  function buildPlansRow(){
-    var h='<div class="sb-plans"><span class="sb-plans-label">方案</span>';
-    for(var i=0;i<sbPlans.length;i++){
-      h+='<button class="chip'+(i===sbSel?' on':'')+'" data-i="'+i+'">'+esc(sbPlans[i].label)+' · 装'+sbPlans[i].itemsInBox+'</button>';
-    }
-    h+='</div>';
-    return h;
+  function buildPlanHead(){
+    return '<div class="sb-plan-head">'+
+      '<span class="sb-plan-title">方案 <b id="sbPlanIdx">'+(sbSel+1)+'</b> / <span id="sbPlanTotal">'+sbPlans.length+'</span></span>'+
+      '<div class="sb-plan-nav">'+
+        '<button class="sb-arrow" id="sbPrev" title="上一个"'+(sbSel<=0?' disabled':'')+'>‹</button>'+
+        '<button class="sb-arrow" id="sbNext" title="下一个"'+(sbSel>=sbPlans.length-1?' disabled':'')+'>›</button>'+
+      '</div></div>';
   }
 
   function showPlan(){
     var p=sbPlans[sbSel]; if(!p) return;
+    // 方案切换器
+    var idxEl=$('sbPlanIdx'), totEl=$('sbPlanTotal'), prev=$('sbPrev'), next=$('sbNext'), labelEl=$('sbPlanLabel');
+    if(idxEl) idxEl.textContent=(sbSel+1)+'';
+    if(totEl) totEl.textContent=sbPlans.length+'';
+    if(prev) prev.disabled=sbSel<=0;
+    if(next) next.disabled=sbSel>=sbPlans.length-1;
+    if(labelEl) labelEl.innerHTML='<span class="chip on">'+esc(p.label)+'</span> · 装入 '+p.itemsInBox+' 个物品';
+    // 指标卡
+    var utilEl=$('sbUtil'), qtyEl=$('sbQty'), wtEl=$('sbWt'), volEl=$('sbVol');
+    if(utilEl) utilEl.textContent=f((p.util||0)*100,1)+'%';
+    if(qtyEl) qtyEl.textContent=p.itemsInBox+'';
+    if(wtEl) wtEl.textContent=f(p.weight||0,2)+' kg';
+    if(volEl) volEl.textContent=((p.itemVol||0)/1e6).toFixed(4)+' m³';
+    // 消息
     var msgClass=p.allFit?'ok':'bad';
     var msgHtml = p.allFit
       ? '<span class="big ok-c">✅ 全部装入 '+p.total+' 个物品</span>，单箱刚好装下，无需额外外箱。'
       : '成功装入 <span class="big">'+p.itemsInBox+'</span> 个物品，<span class="bad-c">'+p.unpacked+'</span> 个物品未装入，预计共需 <span class="big">'+p.boxesNeeded+'</span> 个外箱。<b class="bad-c">空间不足</b>';
     var msgEl=$('sbMsg'); if(msgEl) msgEl.innerHTML='<div class="sb-msg '+msgClass+'">'+msgHtml+'</div>';
+    // 各品种明细
     var pp='';
     for(var i=0;i<p.perProd.length;i++){ var pr=p.perProd[i];
       var txt = pr.left>0 ? (pr.inBox+' 装入 / '+pr.left+' 未装入') : ('全部 '+pr.qty+' 装入');
       pp+='<div class="pp"><b>'+esc(pr.name)+'</b> · '+txt+'</div>';
     }
     var perEl=$('sbPer'); if(perEl) perEl.innerHTML=pp;
-    var chips=document.querySelectorAll('#sbPlans .chip');
-    for(var c=0;c<chips.length;c++){ chips[c].classList.toggle('on', (+chips[c].getAttribute('data-i'))===sbSel); }
+    // 3D
     sbBox=p.box; sbBlocks=p.blocks;
     if(sbCanvas) draw3d(sbCanvas, sbBox, sbBlocks);
   }
