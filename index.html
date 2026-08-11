@@ -157,10 +157,10 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-plan-label .chip{background:var(--ink);color:#fff;border-color:var(--ink);border-radius:999px;font-size:12.5px;padding:5px 12px}
 .sb-msg{margin-top:14px;border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.6;border:1px solid var(--line-2);background:var(--surface)}
 .sb-msg.ok{border-color:#bfe3c6;background:#f1faf3}
-.sb-msg.bad{border-color:#f3c9c9;background:#fdf3f3}
+.sb-msg.bad{border-color:#f5c39e;background:#fff7ed}
 .sb-msg .big{font-size:17px;font-weight:700}
 .sb-msg .ok-c{color:#1f8a3b}
-.sb-msg .bad-c{color:#c0392b}
+.sb-msg .bad-c{color:#d35400}
 .sb-perprod{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
 .sb-hint{margin-top:10px;font-size:12px;color:var(--faint);background:var(--surface);border:1px dashed var(--line-2);border-radius:9px;padding:8px 12px}
 .sb-perprod .pp{border:1px solid var(--line-2);border-radius:9px;padding:7px 11px;font-size:12px;background:var(--surface)}
@@ -573,6 +573,7 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
         <button class="btn-primary" id="btnSingle" style="margin-top:6px">⚙ 装载分析</button>
         <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果" style="margin-top:8px;width:100%">清空</button>
         <div id="sbPlanHead" style="display:none"></div>
+        <div id="sbMsg" style="display:none"></div>
       </div>
 
     </div>
@@ -1590,6 +1591,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     $('sbL').value=60; $('sbW').value=40; $('sbH').value=40;
     $('sbMaxWt').value=''; $('sbDepth').value='2';
     var head=$('sbPlanHead'); if(head){ head.style.display='none'; head.innerHTML=''; }
+    var msg=$('sbMsg'); if(msg){ msg.style.display='none'; msg.innerHTML=''; }
     out.innerHTML='<div class="sec fade"><div class="empty">输入箱子尺寸后点击「装载分析」，即可查看单箱能装多少、剩余需几个外箱，以及多种摆放方案。</div></div>';
     sbPlans=[]; sbSel=0; sbBox=null; sbBlocks=null; sbCanvas=null;
     toast('已清空单箱装载输入与结果');
@@ -1604,12 +1606,14 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var r; try{ r=PackEngine.packSingleBox([L,W,H], products, {maxWeight:maxWt, depth:depth, plans:true}); }catch(e){ r={error:'计算出错：'+e.message}; }
     if(r.error){
       $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
+      var msg0=$('sbMsg'); if(msg0){ msg0.style.display='none'; msg0.innerHTML=''; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
       sbBox=null; sbBlocks=null; sbPlans=[]; return;
     }
     sbPlans = r.plans||[]; sbSel = r.best||0;
     if(!sbPlans.length){
       $('sbPlanHead').style.display='none'; $('sbPlanHead').innerHTML='';
+      var msg1=$('sbMsg'); if(msg1){ msg1.style.display='none'; msg1.innerHTML=''; }
       out.innerHTML='<div class="sec fade"><div class="empty"><b>没有可行方案</b><br>请调整箱子尺寸或单箱限重。</div></div>';
       sbBox=null; sbBlocks=null; return;
     }
@@ -1629,8 +1633,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '</div>'+
       '</div>'+
       '<div class="sb-plan-label" id="sbPlanLabel"></div>'+
-      '<div id="sbMsg"></div><div id="sbPer"></div>'+
-      '<div class="viz3d"><canvas id="stage3d"></canvas>'+
+      '<div id="sbPer"></div>'+
+      '<div class="viz3d"><canvas id="stage3d"></canvas'>
         '<div class="viz3d-tools"><button id="sbReset">重置视角</button></div>'+
         '<div class="viz3d-cap">🖱 拖动旋转 · 滚轮缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
         '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
@@ -1671,7 +1675,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var msgHtml = p.allFit
       ? '<span class="big ok-c">✅ 全部装入 '+p.total+' 个物品</span>，单箱刚好装下，无需额外外箱。'
       : '成功装入 <span class="big">'+p.itemsInBox+'</span> 个物品，<span class="bad-c">'+p.unpacked+'</span> 个物品未装入，预计共需 <span class="big">'+p.boxesNeeded+'</span> 个外箱。<b class="bad-c">空间不足</b>';
-    var msgEl=$('sbMsg'); if(msgEl) msgEl.innerHTML='<div class="sb-msg '+msgClass+'">'+msgHtml+'</div>';
+    var msgEl=$('sbMsg'); if(msgEl){ msgEl.innerHTML='<div class="sb-msg '+msgClass+'">'+msgHtml+'</div>'; msgEl.style.display='block'; }
     // 各品种明细
     var pp='';
     for(var i=0;i<p.perProd.length;i++){ var pr=p.perProd[i];
