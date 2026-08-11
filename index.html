@@ -114,6 +114,29 @@ details[open] summary::before{transform:rotate(45deg)}
 .prod-del:hover{color:#C0492F}
 .btn-add{width:100%;border:1px dashed var(--line-2);background:var(--surface);color:var(--muted);border-radius:10px;padding:9px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s;margin-top:2px}
 .btn-add:hover{border-color:var(--ink-2);color:var(--ink-2)}
+.btn-primary{width:100%;border:none;background:var(--ink);color:#fff;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;box-shadow:var(--shadow-s)}
+.btn-primary:hover{opacity:.9}
+
+/* 单箱装载 3D 视图 */
+.viz3d{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#FCFCFD 0%,#EEF0F4 100%);margin-top:4px}
+.viz3d canvas{display:block;width:100%;height:340px;cursor:grab;touch-action:none}
+.viz3d canvas:active{cursor:grabbing}
+.viz3d-cap{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:11px;color:var(--faint);pointer-events:none}
+.viz3d-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px}
+.viz3d-tools button{border:1px solid var(--line-2);background:rgba(255,255,255,.9);color:var(--ink-2);border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
+.viz3d-tools button:hover{border-color:var(--ink-2)}
+.sb-msg{margin-top:14px;border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.6;border:1px solid var(--line-2);background:var(--surface)}
+.sb-msg.ok{border-color:#bfe3c6;background:#f1faf3}
+.sb-msg.bad{border-color:#f3c9c9;background:#fdf3f3}
+.sb-msg .big{font-size:17px;font-weight:700}
+.sb-msg .ok-c{color:#1f8a3b}
+.sb-msg .bad-c{color:#c0392b}
+.sb-perprod{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
+.sb-perprod .pp{border:1px solid var(--line-2);border-radius:9px;padding:7px 11px;font-size:12px;background:var(--surface)}
+.sb-perprod .pp b{font-weight:600}
+.sb-perprod .pp .ok{color:#1f8a3b}
+.sb-perprod .pp .no{color:#c0392b}
+
 
 /* 模式分段控件 */
 .seg{display:flex;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:3px;gap:3px}
@@ -351,6 +374,7 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
     <div class="tabs">
       <button data-tab="pack" class="on">📦 装箱规划</button>
       <button data-tab="amz">🏷 亚马逊分仓测算</button>
+      <button data-tab="single">📐 单箱装载</button>
       <button data-tab="catalog">🗂️ 产品库</button>
     </div>
     <div class="tdesc" id="tabDesc">多箱运费优化 · 混装 · 省入仓费</div>
@@ -499,6 +523,23 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
             </div>
           </div>
         </details>
+      </div>
+
+      <div class="group" data-panel="single">
+        <div class="glabel">单箱装载（指定一只箱子）</div>
+        <div class="hint" style="margin:-2px 0 10px">把「装箱规划」里的商品尽量装进这<b>一只</b>箱子。装不下会提示预计还需几个外箱。</div>
+        <div class="row c3">
+          <div class="field"><label>箱长 <b>cm</b></label><input type="number" id="sbL" value="60" min="1" step="1"></div>
+          <div class="field"><label>箱宽 <b>cm</b></label><input type="number" id="sbW" value="40" min="1" step="1"></div>
+          <div class="field"><label>箱高 <b>cm</b></label><input type="number" id="sbH" value="40" min="1" step="1"></div>
+        </div>
+        <div class="row c2">
+          <div class="field"><label>单箱最大装载重量 <b>kg</b>（选填）</label><input type="number" id="sbMaxWt" value="" min="0" step="0.5" placeholder="不限"></div>
+          <div class="field"><label>排布搜索深度</label>
+            <select id="sbDepth"><option value="2" selected>标准（混合摆放）</option><option value="1">快速</option><option value="0">仅单一朝向</option></select>
+          </div>
+        </div>
+        <button class="btn-primary" id="btnSingle" style="margin-top:6px">⚙ 装载分析</button>
       </div>
 
     </div>
@@ -651,7 +692,7 @@ var PackEngine = (function(){
         if(best===null) return {ok:false, blocks:blocks, placed:placed, total:total};
         var bsp=best.sp;
         blocks.push({x:bsp.x,y:bsp.y,z:bsp.z,a:best.o[0],b:best.o[1],c:best.o[2],
-          nx:best.nx,ny:best.ny,nz:best.nz,ori:best.oi,
+          nx:best.nx,ny:best.ny,nz:best.nz,ori:best.oi,cnt:best.can,
           prodIndex:item.prodIndex,prodName:item.prodName,netVol:item.netVol});
         got+=best.can; placed+=best.can;
         spaces.splice(best.si,1);
@@ -1011,9 +1052,65 @@ var PackEngine = (function(){
       feeMidUSD:feeMid, feeLoUSD:feeLo, feeHiUSD:feeHi};
   }
 
+  // ============ 单箱装载：把商品尽量装进「一个」用户指定的箱子 ============
+  // 约束：单只箱子的【体积】与【总重量】都不得超过上限。重量预算只分配一次，
+  // 调用 packMulti 一次得到「这唯一一只箱子」的装入结果。
+  function packSingleBox(box, items, opts){
+    opts=opts||{};
+    var L=+box[0], W=+box[1], H=+box[2];
+    if(!(L>EPS && W>EPS && H>EPS)) return {error:'请填写有效的箱子长宽高（均 > 0）'};
+    var maxWt = +opts.maxWeight>0 ? +opts.maxWeight : 0;
+    var work=[], total=0, i;
+    for(i=0;i<items.length;i++){
+      var it=items[i];
+      var l=+it.l, w=+it.w, h=+it.h, q=Math.max(0,Math.round(+it.qty||0)), wt=+it.wt||0;
+      if(!(l>0&&w>0&&h>0) || q<=0) continue;
+      var vol=l*w*h;
+      work.push({l:l,w:w,h:h,need:q,prodIndex:i,prodName:it.name||('产品'+(i+1)),netVol:vol,vol:vol,wt:wt});
+      total+=q;
+    }
+    if(!total) return {error:'清单为空，请先在「装箱规划」添加产品'};
+
+    // 重量上限：把重量预算按品种贪心分配，截断到单箱总重量不超 maxWt
+    var capped=work.map(function(x){ return {l:x.l,w:x.w,h:x.h,need:x.need,prodIndex:x.prodIndex,prodName:x.prodName,netVol:x.netVol,vol:x.vol,wt:x.wt}; });
+    if(maxWt>0){
+      capped.sort(function(a,b){ return (b.wt*b.need)-(a.wt*a.need); });
+      var capW=maxWt;
+      for(var ci=0;ci<capped.length;ci++){
+        if(capW<=EPS){ capped[ci].need=0; continue; }
+        var maxByWt = capped[ci].wt>0 ? Math.floor(capW/capped[ci].wt) : capped[ci].need;
+        if(capped[ci].need>maxByWt){ capped[ci].need=maxByWt; capW-=maxByWt*capped[ci].wt; }
+        else capW-=capped[ci].need*capped[ci].wt;
+      }
+      capped=capped.filter(function(x){ return x.need>0; });
+    }
+
+    // 单只箱子：packMulti 一次性尽量装（同时受体积上限与上面重量截断约束）
+    var res=packMulti(L,W,H,capped,5);
+    var blocks=res.blocks||[];
+    var itemsInBox=res.placed||0;
+    if(itemsInBox<=0) return {error:'此箱子装不下清单中的任何物品（单个物品尺寸超过箱子或单箱超重），请换更大的箱子', box:box};
+
+    var unpacked=total-itemsInBox;
+    var allFit = unpacked<=0;
+    var boxesNeeded = allFit ? 1 : Math.ceil(total/Math.max(1,itemsInBox));
+    // 各品种装入/未装入明细
+    var perProd=[];
+    for(i=0;i<items.length;i++){
+      var it=items[i]; var l=+it.l,w=+it.w,h=+it.h,q=Math.max(0,Math.round(+it.qty||0));
+      if(!(l>0&&w>0&&h>0)||q<=0) continue;
+      var inBox=0;
+      for(var bk=0;bk<blocks.length;bk++){ if(blocks[bk].prodIndex===i) inBox+=(blocks[bk].cnt||(blocks[bk].nx*blocks[bk].ny*blocks[bk].nz)); }
+      perProd.push({name:it.name||('产品'+(i+1)), qty:q, inBox:inBox, left:Math.max(0,q-inBox)});
+    }
+    return {ok:true, box:box, blocks:blocks, itemsInBox:itemsInBox, unpacked:unpacked,
+            total:total, allFit:allFit, boxesNeeded:boxesNeeded, perProd:perProd, maxWt:maxWt};
+  }
+
   return {orientations:orientations, packRec:packRec, packMulti:packMulti, parseBoxes:parseBoxes,
           computeFreight:computeFreight, bestBoxFor:bestBoxFor, distributeFree:distributeFree,
-          evalFree:evalFree, evalIdentical:evalIdentical, plan:plan, analyzeAmazon:analyzeAmazon};
+          evalFree:evalFree, evalIdentical:evalIdentical, plan:plan, analyzeAmazon:analyzeAmazon,
+          packSingleBox:packSingleBox};
 })();
 if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
 </script>
@@ -1025,6 +1122,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   var $=function(id){return document.getElementById(id);};
   var out=$('out'), toastEl=$('toast'), timer=null, lastResult=null;
   var CATALOG_KEY='packflow_catalog_v1';
+  var sbRot={yaw:0.62,pitch:0.5,zoom:1}, sbBox=null, sbBlocks=null, sb3dInited=false;
 
   var PALETTE=[
     ['#8FA3BF','#7A90AE','#6B8099'],
@@ -1095,11 +1193,14 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   function setTab(t){
     var bs=document.querySelectorAll('.tabs button');
     for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].getAttribute('data-tab')===t);
-    $('tabDesc').textContent = t==='amz' ? '按 SKU 分段算入仓费，对比分仓 vs 不分仓' : (t==='catalog'?'已保存的产品，点击即可加入当前发货清单':'多箱运费优化 · 混装 · 省入仓费');
+    $('tabDesc').textContent = t==='amz' ? '按 SKU 分段算入仓费，对比分仓 vs 不分仓'
+      : t==='single' ? '指定一只箱子，尽量装入清单商品 · 3D 可拖拽旋转'
+      : (t==='catalog'?'已保存的产品，点击即可加入当前发货清单':'多箱运费优化 · 混装 · 省入仓费');
     syncGroups();
     var mainWrap=document.getElementById('mainWrap');
     if(mainWrap) mainWrap.style.display = (t==='catalog') ? 'none' : '';
     render();
+    if(t==='single') computeSingle();
   }
   function fallbackCopy(tx){ var ta=document.createElement('textarea'); ta.value=tx; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('方案已复制');}catch(x){toast('复制失败');} document.body.removeChild(ta); }
 
@@ -1168,16 +1269,22 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     var O=P(0,0,0);
     line(O,P(L,0,0),'#C9CDD6',1,[4,4]); line(O,P(0,W,0),'#C9CDD6',1,[4,4]); line(O,P(0,0,H),'#C9CDD6',1,[4,4]);
     var total=0,bi;
-    for(bi=0;bi<blocks.length;bi++) total+=blocks[bi].nx*blocks[bi].ny*blocks[bi].nz;
+    for(bi=0;bi<blocks.length;bi++) total+=(blocks[bi].cnt||(blocks[bi].nx*blocks[bi].ny*blocks[bi].nz));
     var cells=[];
     if(total<=260){
       for(bi=0;bi<blocks.length;bi++){
         var bd=blocks[bi], cols=PALETTE[(bd.prodIndex||0)%PALETTE.length];
-        for(var ix=0;ix<bd.nx;ix++)for(var iy=0;iy<bd.ny;iy++)for(var iz=0;iz<bd.nz;iz++)
+        var cnt=bd.cnt||(bd.nx*bd.ny*bd.nz), gi=0;
+        for(var iz=0;iz<bd.nz && gi<cnt;iz++)for(var iy=0;iy<bd.ny && gi<cnt;iy++)for(var ix=0;ix<bd.nx && gi<cnt;ix++){
           cells.push({x:bd.x+ix*bd.a,y:bd.y+iy*bd.b,z:bd.z+iz*bd.c,a:bd.a,b:bd.b,c:bd.c,cols:cols});
+          gi++;
+        }
       }
     }else{
-      for(bi=0;bi<blocks.length;bi++){ var bb=blocks[bi]; cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:bb.nz*bb.c,cols:PALETTE[(bb.prodIndex||0)%PALETTE.length]}); }
+      for(bi=0;bi<blocks.length;bi++){ var bb=blocks[bi];
+        var cnt=bb.cnt||(bb.nx*bb.ny*bb.nz), perLayer=bb.nx*bb.ny, fullL=Math.floor(cnt/perLayer), rem=cnt-perLayer*fullL;
+        var occH=(fullL+(rem>0?1:0))*bb.c;
+        cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:occH,cols:PALETTE[(bb.prodIndex||0)%PALETTE.length]}); }
     }
     cells.sort(function(m,n){ return (m.x+m.y+m.z)-(n.x+n.y+n.z); });
     for(i=0;i<cells.length;i++){ var cc=cells[i]; cuboid(cc.x,cc.y,cc.z,cc.a,cc.b,cc.c,cc.cols); }
@@ -1191,10 +1298,143 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     g.textAlign='left'; g.fillText(f(H,1), P(L,W,H/2)[0]+8, P(L,W,H/2)[1]+4);
   }
 
+  // ============ 单箱装载：可拖拽 3D 渲染 ============
+  function shadeColor(hex, factor, alpha){
+    var h=hex.replace('#','');
+    var r=parseInt(h.substr(0,2),16), g=parseInt(h.substr(2,2),16), b=parseInt(h.substr(4,2),16);
+    r=Math.min(255,Math.round(r*factor)); g=Math.min(255,Math.round(g*factor)); b=Math.min(255,Math.round(b*factor));
+    return 'rgba('+r+','+g+','+b+','+alpha+')';
+  }
+  function draw3d(canvas, box, blocks){
+    if(!canvas) return;
+    var dpr=window.devicePixelRatio||1;
+    var cw=canvas.clientWidth||480, chh=canvas.clientHeight||340;
+    canvas.width=cw*dpr; canvas.height=chh*dpr;
+    var g=canvas.getContext('2d');
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,cw,chh);
+    var L=box[0],W=box[1],H=box[2];
+    var maxDim=Math.max(L,W,H,1);
+    var scale=(Math.min(cw,chh)*0.34/Math.max(maxDim,1))*sbRot.zoom;
+    var ox=cw/2, oy=chh/2;
+    var cx=L/2, cy=H/2, cz=W/2;
+    function rot(p){ var x=p[0]-cx, y=p[1]-cy, z=p[2]-cz;
+      var cY=Math.cos(sbRot.yaw), sY=Math.sin(sbRot.yaw);
+      var x1=x*cY - z*sY, z1=x*sY + z*cY;
+      var cX=Math.cos(sbRot.pitch), sX=Math.sin(sbRot.pitch);
+      var y2=y*cX - z1*sX, z2=y*sX + z1*cX;
+      return [x1,y2,z2];
+    }
+    function proj(p){ var r=rot(p); return [ox + r[0]*scale, oy - r[1]*scale, r[2]]; }
+    var faces=[];
+    function pushBox(x,y,z,a,b,c,cols,alpha){
+      var c000=[x,y,z],c100=[x+a,y,z],c010=[x,y+b,z],c110=[x+a,y+b,z],
+          c001=[x,y,z+c],c101=[x+a,y,z+c],c011=[x,y+b,z+c],c111=[x+a,y+b,z+c];
+      var defs=[
+        [[c001,c101,c111,c011],cols[0],[0,0,1]],
+        [[c000,c100,c110,c010],cols[2],[0,0,-1]],
+        [[c100,c110,c111,c101],cols[1],[1,0,0]],
+        [[c000,c010,c011,c001],cols[1],[-1,0,0]],
+        [[c010,c110,c111,c011],cols[0],[0,1,0]],
+        [[c000,c100,c101,c001],cols[0],[0,-1,0]]
+      ];
+      for(var i=0;i<6;i++){
+        var pts=defs[i][0], col=defs[i][1], nrm=defs[i][2], dz=0;
+        for(var k=0;k<4;k++) dz+=proj(pts[k])[2];
+        var light=[0.42,0.62,0.66];
+        var nl=nrm[0]*light[0]+nrm[1]*light[1]+nrm[2]*light[2];
+        var shade=0.58+0.46*Math.max(0,nl);
+        faces.push({pts:pts, col:col, shade:shade, depth:dz/4, alpha:alpha});
+      }
+    }
+    // 箱体（淡色透明）
+    pushBox(0,0,0,L,W,H,['#D7DBE4','#C5CAD6','#B9BFCE'],0.10);
+    // 物品
+    var total=0, bi;
+    for(bi=0;bi<blocks.length;bi++) total+=(blocks[bi].cnt||(blocks[bi].nx*blocks[bi].ny*blocks[bi].nz));
+    var cells=[];
+    if(total<=400){
+      for(bi=0;bi<blocks.length;bi++){ var bd=blocks[bi], cols=PALETTE[(bd.prodIndex||0)%PALETTE.length];
+        var cnt=bd.cnt||(bd.nx*bd.ny*bd.nz), gi=0;
+        for(var iz=0;iz<bd.nz && gi<cnt;iz++)for(var iy=0;iy<bd.ny && gi<cnt;iy++)for(var ix=0;ix<bd.nx && gi<cnt;ix++){
+          cells.push({x:bd.x+ix*bd.a,y:bd.y+iy*bd.b,z:bd.z+iz*bd.c,a:bd.a,b:bd.b,c:bd.c,cols:cols});
+          gi++;
+        }
+      }
+    } else {
+      for(bi=0;bi<blocks.length;bi++){ var bb=blocks[bi];
+        var cnt=bb.cnt||(bb.nx*bb.ny*bb.nz), perLayer=bb.nx*bb.ny, fullL=Math.floor(cnt/perLayer), rem=cnt-perLayer*fullL;
+        var occH=(fullL+(rem>0?1:0))*bb.c;
+        cells.push({x:bb.x,y:bb.y,z:bb.z,a:bb.nx*bb.a,b:bb.ny*bb.b,c:occH,cols:PALETTE[(bb.prodIndex||0)%PALETTE.length]}); }
+    }
+    for(var ci=0;ci<cells.length;ci++){ var cc=cells[ci]; pushBox(cc.x,cc.y,cc.z,cc.a,cc.b,cc.c,cc.cols,1); }
+    faces.sort(function(m,n){return m.depth-n.depth;});
+    for(var fi=0;fi<faces.length;fi++){
+      var fc=faces[fi], p0=proj(fc.pts[0]),p1=proj(fc.pts[1]),p2=proj(fc.pts[2]),p3=proj(fc.pts[3]);
+      g.beginPath(); g.moveTo(p0[0],p0[1]); g.lineTo(p1[0],p1[1]); g.lineTo(p2[0],p2[1]); g.lineTo(p3[0],p3[1]); g.closePath();
+      g.fillStyle=shadeColor(fc.col, fc.shade, fc.alpha); g.fill();
+      if(fc.alpha>=0.99){ g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=0.6; g.stroke(); }
+    }
+    // 箱体外框
+    var cs=[[0,0,0],[L,0,0],[0,W,0],[L,W,0],[0,0,H],[L,0,H],[0,W,H],[L,W,H]];
+    var ed=[[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]];
+    g.strokeStyle='#6B7280'; g.lineWidth=1.2;
+    for(var ei=0;ei<ed.length;ei++){ var a=proj(cs[ed[ei][0]]), b=proj(cs[ed[ei][1]]); g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke(); }
+  }
+  function init3d(canvas){
+    if(!canvas) return;
+    var dragging=false, lx=0, ly=0;
+    canvas.addEventListener('pointerdown',function(e){ canvas.setPointerCapture(e.pointerId); dragging=true; lx=e.clientX; ly=e.clientY; });
+    canvas.addEventListener('pointermove',function(e){ if(!dragging) return;
+      sbRot.yaw += (e.clientX-lx)*0.01; sbRot.pitch += (e.clientY-ly)*0.01;
+      sbRot.pitch=Math.max(-1.45,Math.min(1.45,sbRot.pitch)); lx=e.clientX; ly=e.clientY;
+      draw3d(canvas,sbBox,sbBlocks); });
+    canvas.addEventListener('pointerup',function(e){ dragging=false; });
+    canvas.addEventListener('pointercancel',function(e){ dragging=false; });
+    canvas.addEventListener('wheel',function(e){ e.preventDefault();
+      sbRot.zoom*=(e.deltaY<0?1.1:0.9); sbRot.zoom=Math.max(0.4,Math.min(3,sbRot.zoom)); draw3d(canvas,sbBox,sbBlocks); },{passive:false});
+  }
+  function computeSingle(){
+    if(tab()!=='single') return;
+    var L=parseFloat($('sbL').value)||0, W=parseFloat($('sbW').value)||0, H=parseFloat($('sbH').value)||0;
+    var maxWt=parseFloat($('sbMaxWt').value)||0;
+    var depth=parseInt($('sbDepth').value)||2;
+    var products=collectProducts();
+    var r; try{ r=PackEngine.packSingleBox([L,W,H], products, {maxWeight:maxWt, depth:depth}); }catch(e){ r={error:'计算出错：'+e.message}; }
+    if(r.error){
+      out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
+      sbBox=null; sbBlocks=null; return;
+    }
+    sbBox=r.box; sbBlocks=r.blocks;
+    var msgClass = r.allFit ? 'ok' : 'bad';
+    var msgHtml;
+    if(r.allFit){
+      msgHtml='<span class="big ok-c">✅ 全部装入 '+r.total+' 个物品</span>，单箱刚好装下，无需额外外箱。';
+    } else {
+      msgHtml='成功装入 <span class="big">'+r.itemsInBox+'</span> 个物品，'+
+        '<span class="bad-c">'+r.unpacked+'</span> 个物品未装入，预计共需 <span class="big">'+r.boxesNeeded+'</span> 个外箱。<b class="bad-c">空间不足</b>';
+    }
+    var pp='';
+    for(var i=0;i<r.perProd.length;i++){ var p=r.perProd[i];
+      var cls = p.left>0?'no':'ok';
+      var txt = p.left>0 ? (p.inBox+' 装入 / '+p.left+' 未装入') : ('全部 '+p.qty+' 装入');
+      pp+='<div class="pp"><b>'+esc(p.name)+'</b> · '+txt+'</div>';
+    }
+    out.innerHTML='<div class="sec fade">'+
+      '<div class="sb-msg '+msgClass+'">'+msgHtml+'</div>'+
+      '<div class="sb-perprod">'+pp+'</div>'+
+      '<div class="viz3d"><canvas id="stage3d"></canvas>'+
+        '<div class="viz3d-tools"><button id="sbReset">重置视角</button></div>'+
+        '<div class="viz3d-cap">🖱 拖动旋转 · 滚轮缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div></div>'+
+      '</div>';
+    var cv=$('stage3d');
+    if(cv){ init3d(cv); draw3d(cv, sbBox, sbBlocks); }
+    var resetBtn=$('sbReset'); if(resetBtn) resetBtn.addEventListener('click',function(){ sbRot={yaw:0.62,pitch:0.5,zoom:1}; if(cv) draw3d(cv,sbBox,sbBlocks); });
+  }
+
   function layerText(blocks, boxVol){
     var html='';
     for(var i=0;i<blocks.length;i++){
-      var b=blocks[i], n=b.nx*b.ny*b.nz;
+      var b=blocks[i], n=b.cnt||(b.nx*b.ny*b.nz);
       if(!n) continue;
       var cols=PALETTE[(b.prodIndex||0)%PALETTE.length];
       var occ=(b.a*b.b*b.c*n)/boxVol;
@@ -1584,7 +1824,14 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   $('autoBox').addEventListener('change',function(){ $('boxesTarget').disabled=this.checked; if(!this.checked) $('boxesTarget').value=r_chosenN(); render(); });
   $('boxesTarget').addEventListener('input',schedule);
   $('maxSku').addEventListener('input',schedule);
-  window.addEventListener('resize',function(){ if(lastResult&&$('stage')) draw($('stage'),lastResult.rep.box,lastResult.rep.blocks); });
+  window.addEventListener('resize',function(){
+    if(lastResult&&$('stage')) draw($('stage'),lastResult.rep.box,lastResult.rep.blocks);
+    if(tab()==='single'&&$('stage3d')) draw3d($('stage3d'),sbBox,sbBlocks);
+  });
+  $('btnSingle').addEventListener('click', computeSingle);
+  $('sbL').addEventListener('change',computeSingle); $('sbW').addEventListener('change',computeSingle);
+  $('sbH').addEventListener('change',computeSingle); $('sbMaxWt').addEventListener('change',computeSingle);
+  $('sbDepth').addEventListener('change',computeSingle);
   function r_chosenN(){ return lastResult?lastResult.chosenN:5; }
 
   updateModeNote();
