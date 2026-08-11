@@ -116,8 +116,6 @@ details[open] summary::before{transform:rotate(45deg)}
 .btn-add:hover{border-color:var(--ink-2);color:var(--ink-2)}
 .btn-primary{width:100%;border:none;background:var(--ink);color:#fff;border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;box-shadow:var(--shadow-s)}
 .btn-primary:hover{opacity:.9}
-.sb-actions{display:flex;gap:8px;margin-top:6px}
-.sb-actions .btn-primary{flex:1}
 .ghost-btn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;white-space:nowrap}
 .ghost-btn:hover{background:#f4f4f5;color:var(--ink)}
 
@@ -562,10 +560,8 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
             <select id="sbDepth"><option value="2" selected>标准（混合摆放）</option><option value="1">快速</option><option value="0">仅单一朝向</option></select>
           </div>
         </div>
-        <div class="sb-actions">
-          <button class="btn-primary" id="btnSingle">⚙ 装载分析</button>
-          <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果">清空</button>
-        </div>
+        <button class="btn-primary" id="btnSingle" style="margin-top:6px">⚙ 装载分析</button>
+        <button class="ghost-btn" id="btnClearSingle" title="清空输入与结果" style="margin-top:8px;width:100%">清空</button>
         <div id="sbPlanHead" style="display:none"></div>
       </div>
 
