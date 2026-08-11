@@ -65,6 +65,9 @@ setTimeout(() => {
     var utilBig=$('sbUtilBig');
     assert('存在右侧体积利用率 sbUtilBig', !!utilBig);
     assert('利用率数值已填充', !!utilBig && /%/.test(utilBig.textContent));
+    var utilTag=$('sbUtilTag');
+    assert('最优推荐标签存在且首个方案可见', !!utilTag && utilTag.textContent.indexOf('最优推荐')>=0 && utilTag.style.display!=='none');
+    assert('利用率框采用绿色样式(recommended)', !!$('sbUtilCol') && $('sbUtilCol').classList.contains('recommended'));
     assert('存在下方运费大卡片 sbMainCard', !!$('sbMainCard') && $('sbMainCard').innerHTML.length>50);
     assert('不存在旧的 sbCost', !$('sbCost'));
     assert('不存在旧的 sbMetrics', !$('sbMetrics'));

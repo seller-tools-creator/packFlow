@@ -145,9 +145,11 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-info-metrics b{font-size:16px;font-weight:700;color:#1f2338;white-space:nowrap}
 .sb-save-btn{width:100%;padding:9px 12px;border:1px solid #c9d3e8;background:#fff;border-radius:9px;font-size:13px;font-weight:600;color:#3a4a6d;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:auto}
 .sb-save-btn:hover{background:#f1f6ff;border-color:#9ab5e6}
-.sb-util-col{display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #ffe8d6;border-radius:14px;background:#fffbf5;padding:18px}
-.sb-util-label{font-size:16px;font-weight:700;color:#d35400;margin-bottom:2px}
-.sb-util-val{font-size:56px;font-weight:800;color:#e67e22;letter-spacing:-1px;line-height:1}
+.sb-util-col{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #bfe3c6;border-radius:14px;background:#f1faf3;padding:18px}
+.sb-util-col.recommended{border-color:#34a853;background:#eafaef;box-shadow:0 0 0 2px rgba(52,168,83,.15)}
+.sb-util-label{font-size:16px;font-weight:700;color:#1f8a3b;margin-bottom:2px}
+.sb-util-val{font-size:56px;font-weight:800;color:#15803d;letter-spacing:-1px;line-height:1}
+.sb-util-tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#34a853;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(52,168,83,.35)}
 .sb-main-card{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow-s)}
 .save-badge{margin-left:14px;font-size:13px;font-weight:600;color:#1f8a3b;background:#eafaf0;border:1px solid #bfe3c6;border-radius:999px;padding:5px 13px;white-space:nowrap;align-self:center}
 .zoom-row{display:flex;align-items:center;gap:10px;padding:9px 14px 12px;background:rgba(255,255,255,.5);border-top:1px solid var(--line)}
@@ -1315,7 +1317,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   var out=$('out'), toastEl=$('toast'), timer=null, lastResult=null;
   var CATALOG_KEY='packflow_catalog_v1';
   var sbRot={yaw:0.62,pitch:0.5,zoom:1}, sbBox=null, sbBlocks=null, sb3dInited=false;
-  var sbPlans=[], sbSel=0, sbCanvas=null, sbBill=null;
+  var sbPlans=[], sbSel=0, sbBest=0, sbCanvas=null, sbBill=null;
   var sbMaxRot={yaw:0.62,pitch:0.5,zoom:1}, sbMaxInited=false;
 
   var PALETTE=[
@@ -1658,7 +1660,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       out.innerHTML='<div class="sec fade"><div class="empty"><b>无法装载</b><br>'+esc(r.error)+'</div></div>';
       sbBox=null; sbBlocks=null; sbPlans=[]; return;
     }
-    sbPlans = r.plans||[]; sbSel = r.best||0;
+    sbPlans = r.plans||[]; sbSel = r.best||0; sbBest = r.best||0;
     if(!sbPlans.length){
       var msg1=$('sbMsg'); if(msg1){ msg1.style.display='none'; msg1.innerHTML=''; }
       var per1=$('sbPer'); if(per1){ per1.style.display='none'; per1.innerHTML=''; }
@@ -1693,7 +1695,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
           '</div>'+
           '<button class="sb-save-btn" id="sbSavePlan" title="保存方案">保存方案</button>'+
         '</div>'+
-        '<div class="sb-util-col">'+
+        '<div class="sb-util-col" id="sbUtilCol">'+
+          '<div class="sb-util-tag" id="sbUtilTag">最优推荐</div>'+
           '<div class="sb-util-label">体积利用率</div>'+
           '<div class="sb-util-val" id="sbUtilBig">--</div>'+
         '</div>'+
@@ -1796,6 +1799,13 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(sbCanvas) draw3d(sbCanvas, sbBox, sbBlocks);
     var utilBig=$('sbUtilBig');
     if(utilBig) utilBig.textContent=f((p.util||0)*100,1)+'%';
+    // 最优推荐标签：仅第一个/推荐方案显示
+    var utilCol=$('sbUtilCol'), utilTag=$('sbUtilTag');
+    if(utilCol && utilTag){
+      var isBest = sbSel===sbBest;
+      utilTag.style.display = isBest ? 'inline-block' : 'none';
+      utilCol.classList.toggle('recommended', isBest);
+    }
   }
 
   function layerText(blocks, boxVol){
