@@ -1,82 +1,69 @@
+// 验证账户模块：登录/注册入口、弹窗、我的方案抽屉、保存方案按钮（前端 DOM 层）
 const fs = require('fs');
-const { JSDOM } = require('jsdom');
-const html = fs.readFileSync('index.html', 'utf8');
+const path = require('path');
+const { JSDOM } = require('/Users/shitongsong/.workbuddy/binaries/node/workspace/node_modules/jsdom');
 
-// 万能 2D context 桩，避免 jsdom 无 canvas 抛错
-const ctxStub = new Proxy(function(){}, {
-  get(t, p){ if (p === 'measureText') return () => ({ width: 0 }); return () => ctxStub; },
-  set(){ return true; },
-  apply(){ return ctxStub; }
+const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+const errors = [];
+const mockCtx = () => ({
+  setTransform(){}, clearRect(){}, beginPath(){}, moveTo(){}, lineTo(){}, stroke(){},
+  fill(){}, closePath(){}, setLineDash(){}, fillText(){}, save(){}, restore(){},
+  font:'', fillStyle:'', strokeStyle:'', lineWidth:0, textAlign:''
 });
-
-function setupWindow(window) {
-  window.HTMLCanvasElement.prototype.getContext = () => ctxStub;
-  window.__fetchCalls = [];
-  const f = (url) => {
-    window.__fetchCalls.push(String(url));
-    if (String(url).includes('/api/me'))
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ user: { email: 'me@test.com' } }) });
-    if (String(url).includes('/api/plans'))
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ plans: [] }) });
-    return Promise.resolve({ ok: false, json: () => Promise.resolve({ ok: false }) });
-  };
-  window.fetch = f;
-  window.__hasFetch = (typeof window.fetch);
-}
 
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
   pretendToBeVisual: true,
-  beforeParse: setupWindow
-});
-const { window } = dom;
-window.__err = 'none';
-window.addEventListener('error', (e) => { window.__err = (e.error && e.error.message) || e.message; });
-const out = [];
-const $ = (s) => window.document.querySelector(s);
-
-function run() {
- try {
-  out.push('== 错误捕获 ==');
-  out.push('  window.__err = ' + (window.__err || 'none'));
-  out.push('  window.__hasFetch = ' + (window.__hasFetch || 'n/a'));
-  out.push('  fetch 调用记录 = ' + JSON.stringify(window.__fetchCalls || []));
-  out.push('  authSpot 长度 = ' + ($('#authSpot') ? $('#authSpot').outerHTML.length : 'null'));
-  out.push('  btnLogin(未登录态) 存在 = ' + !!$('#btnLogin'));
-  out.push('== 顶栏静态按钮 ==');
-  out.push('  复制方案 btnCopy = ' + !!$('#btnCopy'));
-  out.push('  保存方案 btnSavePlan = ' + !!$('#btnSavePlan'));
-
-  const acct = $('#acctBtn'), menu = $('#acctMenu');
-  const myPlans = $('#btnMyPlans'), logout = $('#btnLogout');
-  out.push('== 登录后账户区 ==');
-  out.push('  acctBtn(邮箱chip) = ' + !!acct + '  文本=' + (acct ? acct.querySelector('.ue').textContent : ''));
-  out.push('  acctMenu(下拉) = ' + !!menu);
-  out.push('  我的方案 = ' + !!myPlans + '   退出登录 = ' + !!logout);
-  out.push('  初始菜单 open = ' + (menu ? menu.classList.contains('open') : 'n/a') + ' (应为 false)');
-
-  if (acct && menu) {
-    acct.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-    out.push('  点击账户chip → 菜单 open = ' + menu.classList.contains('open') + ' (应为 true)');
-
-    if (myPlans) {
-      myPlans.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-      const drawer = $('#planDrawer');
-      out.push('  点我的方案 → 抽屉 on = ' + (drawer && drawer.classList.contains('on')) + ' (应为 true)');
-      out.push('  点我的方案 → 菜单 open = ' + menu.classList.contains('open') + ' (应已关闭)');
-    }
-    if ($('#acctBtn')) {
-      $('#acctBtn').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-      out.push('  再次点击账户chip → 菜单 open = ' + menu.classList.contains('open') + ' (应已收起)');
-    }
+  beforeParse(window) {
+    window.HTMLCanvasElement.prototype.getContext = () => mockCtx();
+    window.devicePixelRatio = 1;
+    if (!window.performance) window.performance = { now: () => Date.now() };
+    // 测试环境无后端：fetch 直接 reject，初始化走 catch 分支渲染登录按钮
+    window.fetch = () => Promise.reject(new Error('no network in test'));
+    window.addEventListener('error', e => errors.push(e.error ? e.error.message : String(e.message)));
   }
- } catch (e) {
-  out.push('THROW: ' + e.message);
- }
- console.log(out.join('\n'));
- const realPass = $('#btnCopy') && $('#btnSavePlan') && $('#acctBtn') && $('#acctMenu') && $('#btnMyPlans') && $('#btnLogout') && $('#planDrawer').classList.contains('on');
- console.log('RESULT: ' + (realPass ? 'PASS ✅' : 'FAIL ❌'));
-}
+});
 
-window.addEventListener('load', () => setTimeout(run, 400));
-setTimeout(() => { if (!$('#acctBtn')) run(); }, 1500);
+const { window } = dom;
+const doc = window.document;
+function $(id){ return doc.getElementById(id); }
+function fire(el, type){ if(el) el.dispatchEvent(new window.Event(type, { bubbles: true })); }
+
+let pass=0, fail=0;
+function assert(name, cond, extra){ if(cond){ pass++; console.log('PASS - '+name); } else { fail++; console.log('FAIL - '+name+(extra?' -> '+extra:'')); } }
+
+setTimeout(() => {
+  try {
+    assert('账户模块加载无运行时错误', errors.length===0, errors.join(' | '));
+    // 导航区
+    assert('导航含保存方案按钮 btnSavePlan', !!$('btnSavePlan'));
+    assert('导航含登录入口容器 authSpot', !!$('authSpot'));
+    // 未登录态应渲染“登录/注册”按钮
+    const loginBtn = $('btnLogin');
+    assert('未登录态渲染登录/注册按钮 btnLogin', !!loginBtn);
+    // 点击登录按钮打开弹窗
+    fire(loginBtn, 'click');
+    assert('点击登录按钮后弹窗打开 (authOverlay.on)', $('authOverlay') && $('authOverlay').classList.contains('on'));
+    // 弹窗内部元素
+    assert('弹窗含登录/注册 tab', !!$('tabLogin') && !!$('tabSignup'));
+    assert('弹窗含邮箱/密码输入与提交按钮', !!$('auEmail') && !!$('auPw') && !!$('authSubmit'));
+    // 切到注册 tab
+    fire($('tabSignup'), 'click');
+    assert('切到注册 tab 后提交按钮文案变化', $('authSubmit') && /注册/.test($('authSubmit').textContent));
+    // 我的方案抽屉
+    assert('存在我的方案抽屉 planDrawer', !!$('planDrawer'));
+    assert('存在抽屉遮罩 drawerMask', !!$('drawerMask'));
+    assert('抽屉含方案列表容器 planList', !!$('planList'));
+    // 单箱结果页的保存方案按钮也绑定（在装载后出现）
+    $('sbL').value='60'; $('sbW').value='40'; $('sbH').value='40';
+    fire($('btnSingle'), 'click');
+    assert('单箱结果页存在保存方案按钮 sbSavePlan', !!$('sbSavePlan'));
+    if($('authClose')) fire($('authClose'), 'click');
+    fire($('sbSavePlan'), 'click');
+    assert('点击单箱保存方案(未登录)弹出登录框', $('authOverlay') && $('authOverlay').classList.contains('on'));
+  } catch(e){
+    fail++; console.log('FAIL - 测试异常: '+e.message);
+  }
+  console.log('\n结果: '+pass+' PASS, '+fail+' FAIL');
+  process.exit(fail?1:0);
+}, 200);

@@ -424,6 +424,8 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
       <div class="pill" id="pillRule">体积重量 = 长×宽×高 ÷ 5000</div>
       <div class="act-bar">
         <button class="mini-btn ghost" id="btnCopy">复制方案</button>
+        <button class="mini-btn solid" id="btnSavePlan">保存方案</button>
+        <span id="authSpot"></span>
       </div>
     </div>
   </div>
@@ -651,6 +653,40 @@ td .flag.x{background:#F3E2E0;color:#B0492F;border-color:#E8C9C4}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- 登录 / 注册 弹窗 -->
+<div class="overlay" id="authOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div>
+        <div class="brand-sm">PACKFLOW</div>
+        <h3 id="authTitle">欢迎回来</h3>
+      </div>
+      <button class="x" id="authClose" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button id="tabLogin" class="on">登录</button>
+      <button id="tabSignup">注册</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="auEmail">邮箱</label><input type="email" id="auEmail" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="field"><label for="auPw">密码</label><input type="password" id="auPw" placeholder="至少 6 位" autocomplete="current-password"></div>
+      <div class="modal-err" id="authErr"></div>
+      <button class="modal-submit" id="authSubmit">登录</button>
+      <div class="modal-hint" id="authHint">还没有账号？<span class="link" id="authSwitch">去注册</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 我的方案 抽屉 -->
+<div class="drawer" id="planDrawer">
+  <div class="drawer-head">
+    <h3>我的方案</h3>
+    <button class="x" id="planClose" aria-label="关闭">×</button>
+  </div>
+  <div class="drawer-body" id="planList"></div>
+</div>
+<div class="overlay" id="drawerMask"></div>
 
 <!-- 单箱 3D 放大全屏视图 -->
 <div class="overlay-max" id="sbMaxOverlay">
@@ -1722,6 +1758,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
     if(prevBtn) prevBtn.addEventListener('click',function(){ if(sbSel>0){ sbSel--; showPlan(); } });
     if(nextBtn) nextBtn.addEventListener('click',function(){ if(sbSel<sbPlans.length-1){ sbSel++; showPlan(); } });
     showPlan();
+    var sbsp=$('sbSavePlan'); if(sbsp) sbsp.addEventListener('click', savePlan);
   }
 
   function readSingleBill(){
@@ -2211,6 +2248,232 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   addProduct({l:20,w:15,h:8,wt:0.2,qty:120,name:'SKU-A 抱枕'});
   syncGroups(); updSplitN();
   render();
+
+  /* ===================== 账户：注册/登录 + 方案存储 ===================== */
+  var auth = { user:null };
+  var planCache = [];
+  function api(method, path, body){
+    var req;
+    try {
+      req = fetch(path, {
+        method:method, credentials:'same-origin',
+        headers: body ? {'Content-Type':'application/json'} : {},
+        body: body ? JSON.stringify(body) : undefined
+      });
+    } catch (e) { return Promise.reject(e); }
+    return req.then(function(r){
+      return r.json().then(function(d){ return { ok:r.ok, status:r.status, data:d }; });
+    });
+  }
+  // 安全读值：某 id 缺失时回退默认值，避免 serialize 报错
+  function sv(id, def){ var el=$(id); return el ? (el.type==='checkbox'?el.checked:el.value) : def; }
+
+  /* 序列化当前所有参数为可存储对象（含单箱装载） */
+  function serializeState(){
+    var s = {
+      tab: tab(),
+      products: collectProducts(),
+      mode: mode(),
+      autoBox: sv('autoBox', true),
+      boxesTarget: sv('boxesTarget', 5),
+      maxSku: sv('maxSku', 5),
+      useCustom: sv('useCustom', false),
+      customList: sv('customList', ''),
+      step: sv('step', 5), maxLen: sv('maxLen', 91.44), maxWid: sv('maxWid', 63.5), maxHt: sv('maxHt', 63.5), minSide: sv('minSide', 10), maxSum: sv('maxSum', ''),
+      divisor: sv('divisor', 5000), price: sv('price', 8), minChg: sv('minChg', 12), minBill: sv('minBill', 5),
+      maxWt: sv('maxWt', 30),
+      overFrom: sv('overFrom', 30), overTo: sv('overTo', 45), overRate: sv('overRate', 1.5),
+      longFrom: sv('longFrom', 120), longTo: sv('longTo', 200), longRate: sv('longRate', 1.5),
+      gap: sv('gap', 0), wall: sv('wall', 0), scanMaxBoxes: sv('scanMaxBoxes', 10), depth: sv('depth', 2),
+      amzRate: sv('amzRate', 7.2), amzDivisor: sv('amzDivisor', 5000), amzWest: sv('amzWest', 8), amzEast: sv('amzEast', 12),
+      amzWestN: sv('amzWestN', 3), amzEastN: sv('amzEastN', 2), amzFeePoint: sv('amzFeePoint', 'mid')
+    };
+    s.single = {
+      L: sv('sbL', 60), W: sv('sbW', 40), H: sv('sbH', 40),
+      maxWt: sv('sbMaxWt', ''), depth: sv('sbDepth', 2),
+      divisor: sv('sbDivisor', 5000), price: sv('sbPrice', 8), minChg: sv('sbMinChg', 12), minBill: sv('sbMinBill', 5),
+      overFrom: sv('sbOverFrom', 30), overTo: sv('sbOverTo', 45), overRate: sv('sbOverRate', 1.5),
+      longFrom: sv('sbLongFrom', 120), longTo: sv('sbLongTo', 200), longRate: sv('sbLongRate', 1.5),
+      gap: sv('sbGap', 0), wall: sv('sbWall', 0)
+    };
+    return s;
+  }
+  /* 从存储方案回填界面 */
+  function applyState(cfg){
+    if(!cfg) return;
+    var box=$('products'); box.innerHTML='';
+    (cfg.products||[]).forEach(function(p){ addProduct(p); });
+    if(!cfg.products || !cfg.products.length) addProduct({l:20,w:15,h:8,wt:0,qty:60,name:''});
+    setMode(cfg.mode||'free');
+    $('autoBox').checked = (cfg.autoBox!==false);
+    $('boxesTarget').value = (cfg.boxesTarget!=null?cfg.boxesTarget:5);
+    $('maxSku').value = cfg.maxSku||5;
+    $('useCustom').checked = !!cfg.useCustom;
+    $('useCustom').dispatchEvent(new Event('change'));
+    $('customList').value = cfg.customList||'';
+    $('step').value = cfg.step||5; $('maxLen').value = cfg.maxLen||91.44; $('maxWid').value = cfg.maxWid||63.5; $('maxHt').value = cfg.maxHt||63.5; $('minSide').value = cfg.minSide||10; $('maxSum').value = cfg.maxSum||'';
+    $('divisor').value = cfg.divisor||5000; $('price').value = cfg.price||8; $('minChg').value = cfg.minChg||12; $('minBill').value = cfg.minBill||5; $('maxWt').value = cfg.maxWt||30;
+    $('overFrom').value = cfg.overFrom||30; $('overTo').value = cfg.overTo||45; $('overRate').value = cfg.overRate||1.5;
+    $('longFrom').value = cfg.longFrom||120; $('longTo').value = cfg.longTo||200; $('longRate').value = cfg.longRate||1.5;
+    $('gap').value = cfg.gap||0; $('wall').value = cfg.wall||0; $('scanMaxBoxes').value = cfg.scanMaxBoxes||10; $('depth').value = cfg.depth||2;
+    $('amzRate').value = cfg.amzRate||7.2; $('amzDivisor').value = cfg.amzDivisor||5000; $('amzWest').value = cfg.amzWest||8; $('amzEast').value = cfg.amzEast||12;
+    $('amzWestN').value = cfg.amzWestN||3; $('amzEastN').value = cfg.amzEastN||2; $('amzFeePoint').value = cfg.amzFeePoint||'mid';
+    // 单箱装载参数
+    if(cfg.single){
+      if($('sbL')) $('sbL').value = cfg.single.L!=null?cfg.single.L:60;
+      if($('sbW')) $('sbW').value = cfg.single.W!=null?cfg.single.W:40;
+      if($('sbH')) $('sbH').value = cfg.single.H!=null?cfg.single.H:40;
+      if($('sbMaxWt')) $('sbMaxWt').value = cfg.single.maxWt!=null?cfg.single.maxWt:'';
+      if($('sbDepth')) $('sbDepth').value = cfg.single.depth!=null?cfg.single.depth:2;
+      if($('sbDivisor')) $('sbDivisor').value = cfg.single.divisor!=null?cfg.single.divisor:5000;
+      if($('sbPrice')) $('sbPrice').value = cfg.single.price!=null?cfg.single.price:8;
+      if($('sbMinChg')) $('sbMinChg').value = cfg.single.minChg!=null?cfg.single.minChg:12;
+      if($('sbMinBill')) $('sbMinBill').value = cfg.single.minBill!=null?cfg.single.minBill:5;
+      if($('sbOverFrom')) $('sbOverFrom').value = cfg.single.overFrom!=null?cfg.single.overFrom:30;
+      if($('sbOverTo')) $('sbOverTo').value = cfg.single.overTo!=null?cfg.single.overTo:45;
+      if($('sbOverRate')) $('sbOverRate').value = cfg.single.overRate!=null?cfg.single.overRate:1.5;
+      if($('sbLongFrom')) $('sbLongFrom').value = cfg.single.longFrom!=null?cfg.single.longFrom:120;
+      if($('sbLongTo')) $('sbLongTo').value = cfg.single.longTo!=null?cfg.single.longTo:200;
+      if($('sbLongRate')) $('sbLongRate').value = cfg.single.longRate!=null?cfg.single.longRate:1.5;
+      if($('sbGap')) $('sbGap').value = cfg.single.gap!=null?cfg.single.gap:0;
+      if($('sbWall')) $('sbWall').value = cfg.single.wall!=null?cfg.single.wall:0;
+    }
+    if(cfg.tab) setTab(cfg.tab);
+    else setTab('single');
+    syncGroups(); updSplitN();
+    if(tab()==='single' && typeof computeSingle==='function'){ computeSingle(); }
+    else { render(); }
+  }
+  function summarize(){
+    if(tab()==='single'){
+      if(!sbPlans || !sbPlans.length) return null;
+      var p=sbPlans[sbSel]||sbPlans[0];
+      return { type:'single', line:'单箱装载 · '+p.total+' 件 · 需 '+p.boxesNeeded+' 外箱 · 利用率 '+f((p.util||0)*100,0)+'%' };
+    }
+    if(!lastResult) return null;
+    if(tab()==='amz'){
+      var r=lastResult;
+      var best = r.recommend==='B' ? r.totalB : r.totalA;
+      return { type:'amazon', line:(r.recommend==='B'?'分仓方案B':'单仓方案A')+' ≈ ¥'+f(best,0)+' · 较另一方案省 ¥'+f(Math.abs(r.savings),0) };
+    }
+    var r2=lastResult;
+    return { type:'pack', line:(r2.mode==='identical'?'同款箱×':'多箱×')+r2.N+' 箱 · 运费 ¥'+f(r2.total.freight,0) };
+  }
+
+  /* 顶栏鉴权区渲染 */
+  function renderAuthUI(){
+    var spot=$('authSpot');
+    if(!spot) return;
+    if(auth.user){
+      spot.innerHTML='<div class="acct" id="acctBtn"><span class="ue" title="'+esc(auth.user.email)+'">'+esc(auth.user.email)+'</span><span class="chev">▾</span></div>'+
+        '<div class="acct-menu" id="acctMenu">'+
+          '<button id="btnMyPlans"><span class="ico">📁</span>我的方案</button>'+
+          '<div class="sep"></div>'+
+          '<button id="btnLogout" class="danger"><span class="ico">⏻</span>退出登录</button>'+
+        '</div>';
+      $('btnMyPlans').addEventListener('click', openDrawer);
+      $('btnLogout').addEventListener('click', doLogout);
+      $('acctBtn').addEventListener('click', function(e){ e.stopPropagation(); var m=$('acctMenu'), a=$('acctBtn'); m.classList.toggle('open'); a.classList.toggle('open'); });
+    } else {
+      spot.innerHTML='<button class="auth-btn primary" id="btnLogin">登录 / 注册</button>';
+      $('btnLogin').addEventListener('click', openAuth);
+    }
+  }
+
+  /* 登录/注册弹窗 */
+  var authMode='login';
+  function setAuthMode(){
+    $('tabLogin').classList.toggle('on', authMode==='login');
+    $('tabSignup').classList.toggle('on', authMode==='signup');
+    $('authTitle').textContent = authMode==='login'?'欢迎回来':'创建账号';
+    $('authSubmit').textContent = authMode==='login'?'登 录':'注册并登录';
+    $('authHint').innerHTML = authMode==='login'? '还没有账号？<span class="link" id="authSwitch">去注册</span>' : '已有账号？<span class="link" id="authSwitch">去登录</span>';
+    $('auPw').setAttribute('autocomplete', authMode==='login'?'current-password':'new-password');
+    bindSwitch();
+  }
+  function bindSwitch(){
+    var s=$('authSwitch'); if(s) s.addEventListener('click', function(){ authMode = authMode==='login'?'signup':'login'; setAuthMode(); $('authErr').textContent=''; });
+  }
+  function openAuth(){ authMode='login'; setAuthMode(); $('authErr').textContent=''; $('authOverlay').classList.add('on'); setTimeout(function(){$('auEmail').focus();},60); }
+  function closeAuth(){ $('authOverlay').classList.remove('on'); $('authErr').textContent=''; }
+  function submitAuth(){
+    var email=$('auEmail').value.trim(), pw=$('auPw').value;
+    if(!email || !pw){ $('authErr').textContent='请填写邮箱和密码'; return; }
+    var path = authMode==='login' ? '/api/login' : '/api/signup';
+    api('POST', path, {email:email, password:pw}).then(function(res){
+      if(res.ok){ auth.user=res.data.user; closeAuth(); renderAuthUI(); toast('已登录 '+auth.user.email); loadPlans(); }
+      else { $('authErr').textContent = res.data.error || '操作失败'; }
+    }).catch(function(){ $('authErr').textContent='网络错误：后端是否已启动？'; });
+  }
+
+  /* 方案抽屉 */
+  function openDrawer(){ if(!auth.user){ openAuth(); return; } loadPlans(); $('planDrawer').classList.add('on'); $('drawerMask').classList.add('on'); }
+  function closeDrawer(){ $('planDrawer').classList.remove('on'); $('drawerMask').classList.remove('on'); }
+  function loadPlans(){
+    api('GET','/api/plans').then(function(res){
+      var el=$('planList');
+      if(!res.ok){ el.innerHTML='<div class="drawer-empty">加载失败：'+(res.data.error||'未知错误')+'</div>'; return; }
+      planCache = res.data.plans || [];
+      if(!planCache.length){ el.innerHTML='<div class="drawer-empty"><b>还没有保存的方案</b>在左侧设置好参数、生成方案后，点右上角「保存方案」即可存到这里，下次登录随时调出。</div>'; return; }
+      var html='';
+      planCache.forEach(function(p){
+        var d=new Date(p.createdAt); var ds=d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+        var sum=p.summary&&p.summary.line?(' · '+p.summary.line):'';
+        html+='<div class="plan-item"><div class="pn">'+esc(p.name)+'</div>'+
+          '<div class="pd">'+ds+sum+'</div>'+
+          '<div class="pa"><button class="load" data-id="'+p.id+'">载入</button>'+
+          '<button class="del" data-id="'+p.id+'">删除</button></div></div>';
+      });
+      el.innerHTML=html;
+      var ls=el.querySelectorAll('.load'), ds2=el.querySelectorAll('.del');
+      for(var i=0;i<ls.length;i++) ls[i].addEventListener('click', function(){ applyPlanById(this.getAttribute('data-id')); });
+      for(var j=0;j<ds2.length;j++) ds2[j].addEventListener('click', function(){ deletePlan(this.getAttribute('data-id')); });
+    }).catch(function(){ $('planList').innerHTML='<div class="drawer-empty">网络错误，无法加载方案</div>'; });
+  }
+  function applyPlanById(id){
+    for(var i=0;i<planCache.length;i++){
+      if(planCache[i].id===id){
+        applyState(planCache[i].config);
+        closeDrawer(); toast('已载入：'+planCache[i].name); return;
+      }
+    }
+    toast('方案未找到，请刷新列表');
+  }
+  function deletePlan(id){
+    api('DELETE','/api/plans/'+id).then(function(res){
+      if(res.ok){ toast('已删除'); loadPlans(); } else toast(res.data.error||'删除失败');
+    }).catch(function(){ toast('删除失败：网络错误'); });
+  }
+  function savePlan(){
+    if(!auth.user){ openAuth(); toast('请先登录后再保存方案'); return; }
+    if(!lastResult && (!sbPlans || !sbPlans.length)){ toast('请先生成方案再保存'); return; }
+    var def = (tab()==='amz'?'亚马逊分仓方案':(tab()==='single'?'单箱装载方案':'装箱方案'))+' '+new Date().toLocaleDateString('zh-CN');
+    var name = window.prompt('给这个方案起个名字：', def);
+    if(name===null || !name.trim()) return;
+    api('POST','/api/plans',{ name:name.trim(), config:serializeState(), summary:summarize() }).then(function(res){
+      if(res.ok){ toast('已保存：'+res.data.name); } else toast(res.data.error||'保存失败');
+    }).catch(function(){ toast('保存失败：网络错误'); });
+  }
+  function doLogout(){
+    api('POST','/api/logout').then(function(){ auth.user=null; planCache=[]; renderAuthUI(); toast('已退出登录'); }).catch(function(){ auth.user=null; renderAuthUI(); });
+  }
+
+  /* 事件绑定 */
+  $('authClose').addEventListener('click', closeAuth);
+  $('authOverlay').addEventListener('click', function(e){ if(e.target===this) closeAuth(); });
+  $('tabLogin').addEventListener('click', function(){ authMode='login'; setAuthMode(); });
+  $('tabSignup').addEventListener('click', function(){ authMode='signup'; setAuthMode(); });
+  $('authSubmit').addEventListener('click', submitAuth);
+  $('auPw').addEventListener('keydown', function(e){ if(e.key==='Enter') submitAuth(); });
+  $('auEmail').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); $('auPw').focus(); } });
+  $('planClose').addEventListener('click', closeDrawer);
+  $('drawerMask').addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeAuth(); closeDrawer(); } });
+  var bsp=document.getElementById('btnSavePlan'); if(bsp) bsp.addEventListener('click', savePlan);
+
+  /* 初始化：探测登录态 */
+  api('GET','/api/me').then(function(res){ if(res.ok) auth.user=res.data.user; renderAuthUI(); })
+    .catch(function(){ renderAuthUI(); });
 
   updateCatalogBadge();
 })();
