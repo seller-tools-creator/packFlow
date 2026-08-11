@@ -1,4 +1,4 @@
-// 验证单箱装载默认态为方式B静态小图+左侧大信息卡片（同多箱规划布局），点击放大进入方式A可拖拽3D
+// 验证单箱装载结果布局：顶部可拖拽3D大图 + 醒目空间利用率 + 下方运费大卡片，点击放大进入全屏3D
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('/Users/shitongsong/.workbuddy/binaries/node/workspace/node_modules/jsdom');
@@ -36,16 +36,15 @@ setTimeout(() => {
     $('sbL').value='60'; $('sbW').value='40'; $('sbH').value='40';
     fire($('btnSingle'), 'click');
     assert('无运行时错误', errors.length===0, errors.join(' | '));
-    assert('默认态存在静态小图 canvas (sbStaticCanvas)', !!$('sbStaticCanvas'));
-    assert('默认态不存在旧 stage3d', !$('stage3d'));
-    assert('默认态不存在缩放滑块 sbZoom', !$('sbZoom'));
+    assert('默认态存在可拖拽3D canvas (stage3d)', !!$('stage3d'));
+    assert('存在缩放滑块 sbZoom', !!$('sbZoom'));
+    assert('存在重置视角按钮 sbReset', !!$('sbReset'));
     assert('存在放大按钮 sbMax', !!$('sbMax'));
-    assert('存在左侧大信息卡片 sbMainCard', !!$('sbMainCard') && $('sbMainCard').innerHTML.length>50);
+    assert('存在醒目空间利用率 sbUtilBig', !!$('sbUtilBig'));
+    assert('存在下方运费大卡片 sbMainCard', !!$('sbMainCard') && $('sbMainCard').innerHTML.length>50);
     assert('不存在旧的 sbCost', !$('sbCost'));
     assert('不存在旧的 sbMetrics', !$('sbMetrics'));
-    assert('采用左右布局 sb-result-top', !!doc.querySelector('.sb-result-top'));
-    var vizCap=$('sbVizCap');
-    assert('右侧小图说明含利用率', !!vizCap && /利用率/.test(vizCap.textContent));
+    assert('不采用左右布局 sb-result-top', !doc.querySelector('.sb-result-top'));
     fire($('sbMax'), 'click');
     assert('点击放大后遮罩打开', $('sbMaxOverlay').classList.contains('on'));
     assert('放大态存在 stage3dMax', !!$('stage3dMax'));
