@@ -149,7 +149,7 @@ details[open] summary::before{transform:rotate(45deg)}
 .sb-util-col.recommended{border-color:#34a853;background:#eafaef;box-shadow:0 0 0 2px rgba(52,168,83,.15)}
 .sb-util-label{font-size:16px;font-weight:700;color:#1f8a3b;margin-bottom:2px}
 .sb-util-val{font-size:56px;font-weight:800;color:#15803d;letter-spacing:-1px;line-height:1}
-.sb-util-tag{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#34a853;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(52,168,83,.35)}
+.sb-util-tag{margin-top:14px;background:var(--ink);color:#fff;font-size:12px;font-weight:600;padding:4px 12px;border-radius:8px;white-space:nowrap}
 .sb-main-card{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow-s)}
 .save-badge{margin-left:14px;font-size:13px;font-weight:600;color:#1f8a3b;background:#eafaf0;border:1px solid #bfe3c6;border-radius:999px;padding:5px 13px;white-space:nowrap;align-self:center}
 .zoom-row{display:flex;align-items:center;gap:10px;padding:9px 14px 12px;background:rgba(255,255,255,.5);border-top:1px solid var(--line)}
@@ -1696,9 +1696,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
           '<button class="sb-save-btn" id="sbSavePlan" title="保存方案">保存方案</button>'+
         '</div>'+
         '<div class="sb-util-col" id="sbUtilCol">'+
-          '<div class="sb-util-tag" id="sbUtilTag">最优推荐</div>'+
           '<div class="sb-util-label">体积利用率</div>'+
           '<div class="sb-util-val" id="sbUtilBig">--</div>'+
+          '<div class="sb-util-tag" id="sbUtilTag">最优推荐</div>'+
         '</div>'+
       '</div>'+
       '<div class="sb-main-card" id="sbMainCard"></div>'+
