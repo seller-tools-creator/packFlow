@@ -130,6 +130,8 @@ details[open] summary::before{transform:rotate(45deg)}
 .viz3d-tools{position:absolute;top:8px;right:8px;display:flex;gap:6px}
 .viz3d-tools button{border:1px solid var(--line-2);background:rgba(255,255,255,.9);color:var(--ink-2);border-radius:7px;font-size:11px;padding:4px 8px;cursor:pointer;font-family:inherit}
 .viz3d-tools button:hover{border-color:var(--ink-2)}
+.sb-viz{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:radial-gradient(120% 90% at 50% 15%,#FCFCFD 0%,#F2F3F6 100%);display:flex;flex-direction:column;margin-top:4px;margin-bottom:16px}
+.sb-viz canvas{display:block;width:100%;height:236px}
 .zoom-row{display:flex;align-items:center;gap:10px;padding:9px 14px 12px;background:rgba(255,255,255,.5);border-top:1px solid var(--line)}
 .zoom-row span{font-size:11px;color:var(--muted);flex:none;user-select:none}
 .zoom-row span:first-child{margin-right:2px}
@@ -1669,12 +1671,11 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       var fr=PackEngine.computeFreight(volW, pp.weight, longest, sbBill);
       pp.fr=fr; pp.totalFreight=fr.freight*pp.boxesNeeded;
     }
-    // 右侧：3D（带放大）+ 运费卡片 + 指标 + 明细
+    // 右侧：默认方式B 静态小图 + 点击放大进入方式A 可拖拽3D
     out.innerHTML='<div class="sec fade">'+
-      '<div class="viz3d"><canvas id="stage3d"></canvas>'+
-        '<div class="viz3d-tools"><button id="sbMax" title="放大查看">⤢ 放大</button><button id="sbReset">重置视角</button></div>'+
-        '<div class="viz3d-cap">🖱 拖动旋转 · 用下方滑块缩放 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm</div>'+
-        '<div class="zoom-row"><span>小</span><input type="range" id="sbZoom" min="0.4" max="3" step="0.01"><span>大</span></div>'+
+      '<div class="sb-viz"><canvas id="sbStaticCanvas"></canvas>'+
+        '<div class="viz3d-tools"><button id="sbMax" title="放大查看">⤢ 放大</button></div>'+
+        '<div class="viz-cap">代表箱装载示意 · 箱子 '+f(L,0)+'×'+f(W,0)+'×'+f(H,0)+' cm · 点击放大可拖拽旋转</div>'+
       '</div>'+
       '<div class="sb-cost" id="sbCost"></div>'+
       '<div class="sb-metrics" id="sbMetrics">'+
@@ -1689,10 +1690,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       '<div id="sbMsg"></div>'+
       '<div id="sbPer"></div>'+
     '</div>';
-    sbCanvas=$('stage3d');
-    if(sbCanvas) init3d(sbCanvas);
-    var sbZoom=$('sbZoom'); if(sbZoom) bindZoomSlider(sbZoom, sbCanvas, sbRot);
-    var resetBtn=$('sbReset'); if(resetBtn) resetBtn.addEventListener('click',function(){ sbRot.yaw=0.62; sbRot.pitch=0.5; sbRot.zoom=1; if(sbRot._zoomEl) sbRot._zoomEl.value=1; showPlan(); });
+    sbCanvas=$('sbStaticCanvas');
     var maxBtn=$('sbMax'); if(maxBtn) maxBtn.addEventListener('click', openMax3d);
     showPlan();
   }
@@ -1777,9 +1775,9 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
       pp+='<div class="pp"><b>'+esc(pr.name)+'</b> · '+txt+'</div>';
     }
     var perEl=$('sbPer'); if(perEl){ perEl.innerHTML=pp; perEl.style.display='block'; }
-    // 3D
+    // 默认态：方式B 静态小图；点击放大进入方式A 可拖拽3D
     sbBox=p.box; sbBlocks=p.blocks;
-    if(sbCanvas) draw3d(sbCanvas, sbBox, sbBlocks);
+    if(sbCanvas) draw(sbCanvas, sbBox, sbBlocks);
   }
 
   function layerText(blocks, boxVol){
@@ -2168,7 +2166,7 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
   $('maxSku').addEventListener('input',schedule);
   window.addEventListener('resize',function(){
     if(lastResult&&$('stage')) draw($('stage'),lastResult.rep.box,lastResult.rep.blocks);
-    if(tab()==='single'&&$('stage3d')) draw3d($('stage3d'),sbBox,sbBlocks);
+    if(tab()==='single'&&$('sbStaticCanvas')) draw($('sbStaticCanvas'),sbBox,sbBlocks);
     if($('sbMaxOverlay')&&$('sbMaxOverlay').classList.contains('on')&&$('stage3dMax')) draw3d($('stage3dMax'),sbBox,sbBlocks,sbMaxRot);
   });
   $('btnSingle').addEventListener('click', computeSingle);
