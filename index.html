@@ -1755,9 +1755,8 @@ if(typeof module!=='undefined' && module.exports) module.exports=PackEngine;
         '<div class="kpi"><div class="k">总实重</div><div class="v num">'+f(t.realWt,1)+'<small>kg</small></div></div>'+
         '<div class="kpi hl"><div class="k">单箱最低计费</div><div class="v num">'+f(r.minBill,0)+'<small>kg</small></div></div>'+
       '</div></div>'+
-      '</div>'+
       '<div class="viz"><canvas id="stage"></canvas>'+
-        '<div class="viz-cap">代表箱装载示意 · '+dim(r.rep.box)+' cm · 利用率 '+f(r.rep.blocks&&r.boxes[0].fill?r.boxes[0].fill*100:0,1)+'%</div></div>'+
+      '<div class="viz-cap">代表箱装载示意 · '+dim(r.rep.box)+' cm · 利用率 '+f(r.rep.blocks&&r.boxes[0].fill?r.boxes[0].fill*100:0,1)+'%</div></div>'+
       '</div>';
 
     // 装箱明细
